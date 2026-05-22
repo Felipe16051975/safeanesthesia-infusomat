@@ -1,0 +1,16 @@
+Flask
+Flask-SQLAlchemy
+SQLAlchemy
+Flask-Login
+Flask-Bcrypt
+Flask-Migrate
+python-dotenv
+gunicorn
+Werkzeug
+Jinja2
+itsdangerous
+MarkupSafe
+click
+blinker
+reportlab
+pytest

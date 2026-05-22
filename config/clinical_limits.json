@@ -1,0 +1,63 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "last_review": "2026-05-22",
+    "reviewed_by": "Veterinario responsable",
+    "clinical_notes": "Valores configurables. Deben validarse con bibliografía antes de uso clínico."
+  },
+  "propofol": {
+    "dog": {
+      "minDose": 0.1,
+      "maxDose": 0.4,
+      "warningThreshold": 0.45,
+      "criticalThreshold": 0.6
+    },
+    "cat": {
+      "minDose": 0.1,
+      "maxDose": 0.3,
+      "warningThreshold": 0.35,
+      "criticalThreshold": 0.5
+    }
+  },
+  "ketamine": {
+    "concentrations": [
+      { "name": "Ketamina 100 mg/ml", "value_mg_per_ml": 100 },
+      { "name": "Ketamina 50 mg/ml",  "value_mg_per_ml": 50 }
+    ],
+    "reasons": [
+      "tracción ovárica",
+      "manipulación visceral",
+      "movimiento",
+      "taquicardia",
+      "profundización",
+      "otro"
+    ],
+    "limits": {
+      "dog": { "safe": 2, "warning": 5, "critical": 10 },
+      "cat": { "safe": 1, "warning": 3, "critical": 6 }
+    }
+  },
+  "lidocaine": {
+    "concentrations": [
+      { "name": "Lidocaína 10 mg/ml (1%)", "value_mg_per_ml": 10 },
+      { "name": "Lidocaína 20 mg/ml (2%)", "value_mg_per_ml": 20 }
+    ],
+    "sites": [
+      "ligamento derecho",
+      "ligamento izquierdo",
+      "línea alba",
+      "peritoneal",
+      "piel",
+      "otro"
+    ],
+    "max_mg_per_kg": {
+      "dog": 5,
+      "cat": 3
+    },
+    "classification": {
+      "safe_percent": 70,
+      "warning_percent": 90,
+      "critical_percent": 100
+    }
+  }
+}

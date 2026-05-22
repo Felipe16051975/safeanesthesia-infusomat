@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Calculadora clínica para mantenimiento anestésico con propofol en bomba B. Braun Infusomat Space para medicina veterinaria.">
+    <title>SafeAnesthesia — Infusomat Propofol Module</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="dashboard-body">
+
+<!-- ═══════════════════════════════════════ HEADER ═══════════════════════════ -->
+<header class="app-header">
+    <div class="header-logo">
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/>
+            <path d="M12 6v6l4 2"/>
+            <path d="M8 14s1 1 4 1 4-1 4-1"/>
+        </svg>
+        <div class="logo-text">
+            <span class="logo-title">SafeAnesthesia</span>
+            <span class="logo-badge">Infusomat Propofol Module V1</span>
+        </div>
+    </div>
+    <div class="header-user">
+        <span class="user-name">👤 {{ current_user.username }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-logout" id="btn-logout-action">Cerrar Sesión</a>
+    </div>
+</header>
+
+<main class="app-content">
+
+    <!-- ═══════════════════════════ KPI DASHBOARD ══════════════════════════ -->
+    <section class="dashboard-kpis" id="dashboard-kpis">
+        <div class="kpi-card" id="kpi-cases-today">
+            <div class="kpi-icon">🏥</div>
+            <div class="kpi-data">
+                <span class="kpi-value" id="kpi-val-today">—</span>
+                <span class="kpi-label">Procedimientos Hoy</span>
+            </div>
+        </div>
+        <div class="kpi-card" id="kpi-avg-duration">
+            <div class="kpi-icon">⏱️</div>
+            <div class="kpi-data">
+                <span class="kpi-value" id="kpi-val-duration">—</span>
+                <span class="kpi-label">Duración Promedio (min)</span>
+            </div>
+        </div>
+        <div class="kpi-card" id="kpi-ovh">
+            <div class="kpi-icon">🔬</div>
+            <div class="kpi-data">
+                <span class="kpi-value" id="kpi-val-ovh">—</span>
+                <span class="kpi-label">OVH Totales</span>
+            </div>
+        </div>
+        <div class="kpi-card" id="kpi-castration">
+            <div class="kpi-icon">✂️</div>
+            <div class="kpi-data">
+                <span class="kpi-value" id="kpi-val-castration">—</span>
+                <span class="kpi-label">Castraciones Totales</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════════ CALCULADORA PRINCIPAL ═════════════════ -->
+    <div class="calculator-grid">
+
+        <!-- ── Columna Izquierda: Formulario ── -->
+        <section class="config-panel">
+            <h2>Parámetros del Procedimiento</h2>
+            <form id="calc-form" class="calc-form">
+
+                <!-- Datos Paciente -->
+                <fieldset class="form-section">
+                    <legend>Datos Fisiológicos</legend>
+                    <div class="form-row flex-row-3">
+                        <div class="form-group-item">
+                            <label for="patientName">Nombre Paciente</label>
+                            <input type="text" id="patientName" name="patientName" placeholder="Ej. Luna" required>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="species">Especie</label>
+                            <select id="species" name="species" required>
+                                <option value="dog" selected>Perro (Canino)</option>
+                                <option value="cat">Gato (Felino)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="weight">Peso (kg)</label>
+                            <input type="number" id="weight" name="weight" step="0.01" min="0.1" max="100" placeholder="0.0" required>
+                        </div>
+                    </div>
+                    <div class="form-row flex-row-3">
+                        <div class="form-group-item">
+                            <label for="age">Edad</label>
+                            <input type="text" id="age" name="age" placeholder="Ej. 4 años" required>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="asa">Clasificación ASA</label>
+                            <select id="asa" name="asa" required>
+                                <option value="I" selected>ASA I — Normal sano</option>
+                                <option value="II">ASA II — Sistémica leve</option>
+                                <option value="III">ASA III — Sistémica severa</option>
+                                <option value="IV">ASA IV — Amenaza constante</option>
+                                <option value="V">ASA V — Moribundo</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="durationMin">Duración Estimada (min)</label>
+                            <input type="number" id="durationMin" name="durationMin" min="1" max="480" placeholder="60" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group-item">
+                            <label for="surgeryType">Tipo de Cirugía</label>
+                            <input type="text" id="surgeryType" name="surgeryType" placeholder="Ej. OVH — Ovariohisterectomía" required>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Propofol -->
+                <fieldset class="form-section">
+                    <legend>Infusión de Propofol</legend>
+                    <div class="form-row flex-row-2">
+                        <div class="form-group-item">
+                            <label for="propofolConcentration">Concentración Comercial</label>
+                            <select id="propofolConcentration" name="propofolConcentration" required>
+                                <option value="1.0" selected>Propofol 1% (10 mg/ml)</option>
+                                <option value="2.0">Propofol 2% (20 mg/ml)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="targetDose">Dosis de Mantenimiento (mg/kg/min)</label>
+                            <div class="input-unit-wrapper">
+                                <input type="number" id="targetDose" name="targetDose" step="0.01" min="0.01" max="2.0" placeholder="0.20" required>
+                                <span class="unit-badge">mg/kg/min</span>
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Dilución -->
+                <fieldset class="form-section">
+                    <legend>Dilución (NaCl 0.9%)</legend>
+                    <div class="form-row flex-row-2">
+                        <div class="form-group-item">
+                            <label for="diluentVolumePreset">Volumen de Suero</label>
+                            <select id="diluentVolumePreset" name="diluentVolumePreset" required>
+                                <option value="20">20 ml</option>
+                                <option value="40" selected>40 ml</option>
+                                <option value="50">50 ml</option>
+                                <option value="100">100 ml</option>
+                                <option value="custom">Personalizado</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item" id="custom-diluent-wrapper" style="display:none;">
+                            <label for="diluentVolumeCustom">Volumen Personalizado (ml)</label>
+                            <input type="number" id="diluentVolumeCustom" name="diluentVolumeCustom" min="1" max="1000" placeholder="ml">
+                        </div>
+                    </div>
+                </fieldset>
+
+                <!-- Cebado -->
+                <fieldset class="form-section">
+                    <legend>Cebado de Línea</legend>
+                    <div class="form-row flex-row-3">
+                        <div class="form-group-item">
+                            <label for="linePrimed">¿Línea Cebada?</label>
+                            <select id="linePrimed" name="linePrimed" required>
+                                <option value="si" selected>Sí, cargada</option>
+                                <option value="no">No, vacía</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item" id="primed-with-wrapper">
+                            <label for="primedWith">Cebada Con</label>
+                            <select id="primedWith" name="primedWith">
+                                <option value="suero" selected>Suero (NaCl 0.9%)</option>
+                                <option value="mezcla">Mezcla (Propofol activo)</option>
+                            </select>
+                        </div>
+                        <div class="form-group-item">
+                            <label for="deadVolume">Volumen Muerto (ml)</label>
+                            <input type="number" id="deadVolume" name="deadVolume" step="0.1" min="0.1" max="10" value="1.5" required>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="btn-calculate" id="btn-run-calculation">
+                    ⚡ Calcular Programación
+                </button>
+            </form>
+        </section>
+
+        <!-- ── Columna Derecha: Resultados ── -->
+        <section class="results-panel">
+
+            <!-- Bloqueo crítico -->
+            <div class="lock-overlay" id="safety-lock-overlay" style="display:none;">
+                <div class="lock-card">
+                    <div class="lock-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <h3>Alerta Crítica Anestésica</h3>
+                    <p>Se han superado límites recomendados o el ASA del paciente es crítico. Revise las advertencias y confirme su responsabilidad.</p>
+                    <button onclick="document.getElementById('alerts-container').scrollIntoView({behavior:'smooth'});">
+                        → Ver Advertencias
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pantalla Infusomat Space -->
+            <div class="pump-wrapper">
+                <h3>Emulación B. Braun Infusomat Space</h3>
+                <div class="pump-device" id="infusomat-display">
+                    <div class="pump-screen">
+                        <div class="pump-status-bar">
+                            <span class="status-indicator run" id="pump-status-lbl">STOP</span>
+                            <span class="pump-title">Infusomat Space</span>
+                            <span class="unit-mode">Rate [ml/h]</span>
+                        </div>
+                        <div class="pump-main-display">
+                            <div class="pump-big-flow" id="pump-flow-val">0.00</div>
+                            <div class="pump-sub-display">
+                                <div class="sub-item">
+                                    <span class="sub-label">VTBI</span>
+                                    <span class="sub-val" id="pump-vtbi-val">0.0 ml</span>
+                                </div>
+                                <div class="sub-item">
+                                    <span class="sub-label">TIME</span>
+                                    <span class="sub-val" id="pump-time-val">00:00 h:m</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pump-alert-bar" id="pump-low-flow-alarm" style="display:none;">
+                            <span class="alarm-pulsing">⚠ FLUJO BAJO &lt; 2 ml/h</span>
+                        </div>
+                    </div>
+                    <div class="pump-keypad">
+                        <div class="pump-button btn-power"><span>⏻</span></div>
+                        <div class="pump-button btn-start-stop" id="btn-pump-start">
+                            <span id="pump-toggle-lbl">START</span>
+                        </div>
+                        <div class="pump-button btn-arrows">▲ ▼</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detalles de preparación -->
+            <div class="details-card">
+                <h3>Plan de Preparación</h3>
+                <div class="detail-row">
+                    <span>Propofol puro a extraer:</span>
+                    <strong id="out-propofol-pure">— ml</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Suero NaCl 0.9%:</span>
+                    <strong id="out-saline-diluent">— ml</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Volumen final de mezcla:</span>
+                    <strong id="out-mixture-volume">— ml</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Concentración de la mezcla:</span>
+                    <strong id="out-mixture-concentration">— mg/ml</strong>
+                </div>
+                <div class="detail-row">
+                    <span>Propofol total requerido:</span>
+                    <strong id="out-propofol-total-mg">— mg</strong>
+                </div>
+                <div class="detail-row" id="delay-row" style="display:none;">
+                    <span>Retraso por cebado con suero:</span>
+                    <strong id="out-priming-delay" class="text-warning">— min</strong>
+                </div>
+            </div>
+
+            <!-- Botones acción -->
+            <div class="action-buttons-row">
+                <button class="btn-secondary" id="btn-save-case" disabled>💾 Guardar Caso</button>
+                <button class="btn-secondary" id="btn-outcomes-modal">📋 Registro Post-Op</button>
+                <button class="btn-secondary" id="btn-export-pdf" disabled>🖨️ Exportar PDF</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- ═══════════════════════ PANELES SECUNDARIOS ═════════════════════════ -->
+    <div class="secondary-panels-grid">
+
+        <!-- Panel Ketamina -->
+        <section class="secondary-panel panel-ketamine">
+            <div class="panel-header">
+                <h3>💉 Refuerzo con Ketamina</h3>
+                <span class="panel-badge optional">Opcional</span>
+            </div>
+            <p class="panel-description">
+                Calcule bolos de profundización para momentos de alto estímulo quirúrgico
+                (tracción ovárica, manipulación visceral, respuesta simpática).
+            </p>
+            <div class="form-row flex-row-3">
+                <div class="form-group-item">
+                    <label for="ket-dose">Dosis (mg/kg)</label>
+                    <div class="input-unit-wrapper">
+                        <input type="number" id="ket-dose" step="0.1" min="0.1" max="2.0" value="0.5" placeholder="0.5">
+                        <span class="unit-badge">mg/kg</span>
+                    </div>
+                </div>
+                <div class="form-group-item">
+                    <label for="ket-conc">Concentración</label>
+                    <div class="input-unit-wrapper">
+                        <input type="number" id="ket-conc" step="1" min="10" max="100" value="50" placeholder="50">
+                        <span class="unit-badge">mg/ml</span>
+                    </div>
+                </div>
+                <div class="form-group-item form-group-btn">
+                    <label>&nbsp;</label>
+                    <button type="button" class="btn-secondary-action" id="btn-calc-ketamine">Calcular</button>
+                </div>
+            </div>
+            <div class="secondary-result" id="ket-result" style="display:none;">
+                <div class="result-grid-2">
+                    <div class="result-item">
+                        <span class="result-label">Dosis (mg)</span>
+                        <span class="result-val" id="ket-out-mg">—</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Volumen (ml)</span>
+                        <span class="result-val" id="ket-out-ml">—</span>
+                    </div>
+                </div>
+                <div class="alert-item warning" id="ket-warning-msg" style="display:none;"></div>
+            </div>
+        </section>
+
+        <!-- Panel Lidocaína -->
+        <section class="secondary-panel panel-lidocaine">
+            <div class="panel-header">
+                <h3>⚗️ Balance Lidocaína Local</h3>
+                <span class="panel-badge safety">Seguridad</span>
+            </div>
+            <p class="panel-description">
+                Registre el volumen de lidocaína instilada por plano anatómico y verifique
+                que no se supere la dosis tóxica acumulada.
+            </p>
+            <div class="form-row flex-row-2">
+                <div class="form-group-item">
+                    <label for="lido-limit">Límite (mg/kg)</label>
+                    <input type="number" id="lido-limit" step="0.5" min="1" max="20" value="8.0" placeholder="8.0">
+                </div>
+                <div class="form-group-item">
+                    <label for="lido-conc">Concentración (mg/ml)</label>
+                    <input type="number" id="lido-conc" step="1" min="5" max="40" value="20" placeholder="20">
+                </div>
+            </div>
+            <div class="form-row flex-row-2">
+                <div class="form-group-item">
+                    <label for="lido-linea">Línea Alba (ml)</label>
+                    <input type="number" id="lido-linea" step="0.1" min="0" value="0" placeholder="0.0">
+                </div>
+                <div class="form-group-item">
+                    <label for="lido-ligamento">Ligamento Ovárico (ml)</label>
+                    <input type="number" id="lido-ligamento" step="0.1" min="0" value="0" placeholder="0.0">
+                </div>
+            </div>
+            <div class="form-row flex-row-2">
+                <div class="form-group-item">
+                    <label for="lido-peritoneal">Peritoneal (ml)</label>
+                    <input type="number" id="lido-peritoneal" step="0.1" min="0" value="0" placeholder="0.0">
+                </div>
+                <div class="form-group-item">
+                    <label for="lido-piel">Piel / Subcutáneo (ml)</label>
+                    <input type="number" id="lido-piel" step="0.1" min="0" value="0" placeholder="0.0">
+                </div>
+            </div>
+            <button type="button" class="btn-secondary-action" id="btn-calc-lidocaine">Calcular Balance</button>
+
+            <div class="secondary-result" id="lido-result" style="display:none;">
+                <div class="result-grid-3">
+                    <div class="result-item">
+                        <span class="result-label">Máx. permitido</span>
+                        <span class="result-val" id="lido-out-max-mg">— mg</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Total inyectado</span>
+                        <span class="result-val" id="lido-out-total-mg">— mg</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Saldo restante</span>
+                        <span class="result-val" id="lido-out-remaining-mg">— mg</span>
+                    </div>
+                </div>
+                <!-- Barra de progreso toxicidad -->
+                <div class="toxicity-bar-wrapper">
+                    <div class="toxicity-bar-label">
+                        <span>Uso acumulado:</span>
+                        <span id="lido-pct">0%</span>
+                    </div>
+                    <div class="toxicity-bar-track">
+                        <div class="toxicity-bar-fill" id="lido-bar-fill" style="width:0%"></div>
+                    </div>
+                </div>
+                <div class="alert-item" id="lido-status-alert" style="display:none;"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ═══════════════════════ ADVERTENCIAS CLÍNICAS ════════════════════════ -->
+    <section class="alerts-section">
+        <div class="alerts-card">
+            <h3>Mensajes y Advertencias Médicas</h3>
+            <div class="alerts-container" id="alerts-container">
+                <div class="alert-info-empty" id="alerts-empty-msg">
+                    Ingrese parámetros y presione "Calcular" para evaluar umbrales de seguridad.
+                </div>
+            </div>
+            <div class="critical-alert-card" id="critical-consent-card" style="display:none;">
+                <div class="alert-card-header">
+                    <svg class="alert-card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <h4>ADVERTENCIA MÉDICA CRÍTICA</h4>
+                </div>
+                <p>La dosis o el ASA del paciente supera límites recomendados. Es obligatorio confirmar la responsabilidad clínica para desbloquear los resultados.</p>
+                <div class="consent-checkbox-row">
+                    <input type="checkbox" id="consent-check" class="consent-checkbox">
+                    <label for="consent-check" class="consent-label">
+                        Comprendo la advertencia clínica, asumo la responsabilidad médica y deseo continuar.
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════════ HISTORIAL DE CASOS ════════════════════════════ -->
+    <section class="history-section">
+        <div class="history-card">
+            <div class="history-header">
+                <h3>📁 Últimos 10 Procedimientos</h3>
+                <button class="btn-small" id="btn-refresh-history">↻ Actualizar</button>
+            </div>
+            <div class="table-wrapper">
+                <table class="cases-table" id="cases-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Paciente</th>
+                            <th>Cirugía</th>
+                            <th>Peso</th>
+                            <th>ASA</th>
+                            <th>Dur. Est.</th>
+                            <th>Dur. Real</th>
+                            <th>FLOW</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cases-table-body">
+                        <tr>
+                            <td colspan="9" class="table-empty">No hay casos registrados aún.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+</main>
+
+<!-- ═══════════════════════════════ MODALES ══════════════════════════════════ -->
+
+<!-- Modal Post-Op -->
+<div class="modal-overlay" id="modal-postop" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>📋 Registro Post-Operatorio</h3>
+            <button class="modal-close" id="btn-close-modal-postop">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-row flex-row-2">
+                <div class="form-group-item">
+                    <label for="real-duration">Duración Real (min)</label>
+                    <input type="number" id="real-duration" min="1" max="720" placeholder="60">
+                </div>
+                <div class="form-group-item">
+                    <label for="real-volume">Volumen Infundido Real (ml)</label>
+                    <input type="number" id="real-volume" step="0.1" min="0" placeholder="0.0">
+                </div>
+            </div>
+            <div class="form-row flex-row-2">
+                <div class="form-group-item">
+                    <label for="real-propofol-mg">Propofol Real Administrado (mg)</label>
+                    <input type="number" id="real-propofol-mg" step="0.1" min="0" placeholder="0.0">
+                </div>
+                <div class="form-group-item">
+                    <label for="real-avg-dose">Dosis Promedio Real (mg/kg/min)</label>
+                    <input type="number" id="real-avg-dose" step="0.001" min="0" placeholder="0.000">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="btn-close-modal-postop-cancel">Cancelar</button>
+            <button class="btn-calculate" id="btn-save-postop">Guardar Registro</button>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="app-footer">
+    <p class="disclaimer">
+        <strong>ADVERTENCIA CLÍNICA LEGAL:</strong> Esta herramienta es un apoyo matemático para profesionales veterinarios. No reemplaza el criterio clínico, la monitorización anestésica ni la responsabilidad del médico veterinario tratante.
+    </p>
+    <p class="copyright">&copy; 2026 SafeAnesthesia. Repositorio independiente. No vinculado a PartenVet.</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
