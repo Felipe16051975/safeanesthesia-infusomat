@@ -1,0 +1,16 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "last_review": "2026-05-22",
+    "reviewed_by": "Dr. Felipe Inostroza",
+    "clinical_notes": "Valores configurables de dosis máxima acumulada de lidocaína por infiltración local. Validar con bibliografía antes de uso clínico."
+  },
+  "limits": {
+    "dog": {
+      "maxSafeDose": 8.0
+    },
+    "cat": {
+      "maxSafeDose": 4.0
+    }
+  }
+}

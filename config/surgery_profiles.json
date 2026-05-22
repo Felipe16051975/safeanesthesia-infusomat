@@ -1,0 +1,63 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "last_review": "2026-05-22",
+    "reviewed_by": "Dr. Felipe Inostroza",
+    "clinical_notes": "Monitoreo cognitivo informativo de puntos de alto estímulo y guías locales por tipo de cirugía."
+  },
+  "profiles": {
+    "ovh": {
+      "name": "Ovariohisterectomía (OVH)",
+      "criticalPoints": [
+        "Tracción del pedículo ovárico derecho (Estímulo simpático alto)",
+        "Tracción del pedículo ovárico izquierdo (Estímulo simpático alto)",
+        "Tracción de cuello/cérvix uterino",
+        "Cierre de línea alba (estímulo doloroso somático)"
+      ],
+      "allowsLidocaine": true,
+      "allowsKetamine": true
+    },
+    "castration": {
+      "name": "Castración",
+      "criticalPoints": [
+        "Incisión pre-escrotal o escrotal",
+        "Tracción testicular y manipulación del cordón espermático (Estímulo vagal alto)",
+        "Ligadura de vasos espermáticos"
+      ],
+      "allowsLidocaine": true,
+      "allowsKetamine": true
+    },
+    "cesarean": {
+      "name": "Cesárea",
+      "criticalPoints": [
+        "Hipotensión materna severa tras decúbito dorsal",
+        "Incisión uterina y extracción rápida de neonatos (minimizar tiempo de exposición a propofol)",
+        "Administración de oxitocina (vigilar vasodilatación)",
+        "Sutura uterina"
+      ],
+      "allowsLidocaine": true,
+      "allowsKetamine": false
+    },
+    "mastectomy": {
+      "name": "Mastectomía",
+      "criticalPoints": [
+        "Disección de gran colgajo de piel y tejido subcutáneo",
+        "Ligadura de vasos epigástricos craneales/caudales",
+        "Dolor inflamatorio severo postoperatorio"
+      ],
+      "allowsLidocaine": true,
+      "allowsKetamine": true
+    },
+    "laparotomy": {
+      "name": "Laparotomía Exploratoria",
+      "criticalPoints": [
+        "Incisión y apertura de la línea alba",
+        "Manipulación y tracción de vísceras abdominales/mesenterio (reflejo bradicárdico severo)",
+        "Lavado peritoneal con solución tibia",
+        "Cierre de la pared muscular"
+      ],
+      "allowsLidocaine": true,
+      "allowsKetamine": true
+    }
+  }
+}

@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeAnesthesia - Infusomat Propofol Module</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+
+<body>
+    <!-- CONTENEDOR PRINCIPAL DE CONSENTIMIENTO CLÍNICO BLOQUEANTE -->
+    <div id="consent-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <h2 id="consent-title">Consentimiento de Responsabilidad Clínica</h2>
+            <div class="clinical-warning-box text-left">
+                <p id="consent-warning-text">
+                    <strong>SafeAnesthesia Infusomat Propofol Module</strong> es un sistema de soporte y cálculo de
+                    infusión diseñado para asistir al médico veterinario.
+                    <br><br>
+                    • Este software <strong>NO reemplaza el criterio del clínico responsable</strong>.<br>
+                    • Toda infusión continua con propofol requiere monitorización cardiorespiratoria avanzada y
+                    analgesia planificada.<br>
+                    • Los rangos de referencia son configurables y editables, debiendo ser validados y confrontados con
+                    literatura científica actualizada por el veterinario a cargo antes de aplicarse en pacientes reales.
+                </p>
+            </div>
+            <button id="btn-accept-consent" class="btn btn-teal mt-3">Confirmo que soy profesional veterinario y usaré
+                monitorización anestésica</button>
+        </div>
+    </div>
+
+    <!-- PANEL PRINCIPAL DE LA APP -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="branding">
+                <h1>SafeAnesthesia <span>Infusomat Module</span></h1>
+                <p>Mantenimiento Anestésico Volumétrico Continuo</p>
+            </div>
+
+            <div class="user-meta-controls">
+                {% if debug %}
+                <span class="badge badge-dev">MODO DESARROLLO</span>
+                {% endif %}
+                <span class="user-name">Usuario: {{ current_user.username }}</span>
+                <button id="btn-change-password-modal" class="btn btn-outline btn-sm">Contraseña</button>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Cerrar Sesión</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main-layout">
+        <!-- SECCIÓN IZQUIERDA: PLANIFICACIÓN Y DILUCIÓN (INPUTS) -->
+        <h2 class="step-title" style="margin-top:1rem; font-size:1.5rem; font-weight:bold;">PASO 1 — Paciente y cirugía</h2>
+<section class="panel-inputs-section">
+
+            <!-- TARJETA: MODO DE CÁLCULO -->
+            <div class="card card-glow mb-4">
+                <div class="card-header">
+                    <h3>Modalidad Operativa</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mode-selector-grid">
+                        <label class="mode-option">
+                            <input type="radio" name="calculation_mode" value="calculation_only" checked>
+                            <span class="option-label">
+                                <strong>Cálculo Solamente</strong>
+                                <small>Auditoría rápida y dosis puras sin bomba</small>
+                            </span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="calculation_mode" value="infusomat">
+                            <span class="option-label">
+                                <strong>Programación Infusomat</strong>
+                                <small>Dilución de mezcla en suero y bomba volumétrica</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FASE A: REGISTRO DEL PACIENTE -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3>Fase A: Datos del Paciente</h3>
+                </div>
+                <div class="card-body grid-2">
+                    <div class="form-group">
+                        <label>Nombre del Paciente <span class="required">*</span></label>
+                        <input type="text" id="patient_name" class="form-control" placeholder="Ej: Kira" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Especie <span class="required">*</span></label>
+                        <select id="species" class="form-control" required>
+                            <option value="dog">Perro (Canino)</option>
+                            <option value="cat">Gato (Felino)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Raza</label>
+                        <input type="text" id="breed" class="form-control" placeholder="Ej: Poodle">
+                    </div>
+                    <div class="form-group">
+                        <label>Peso (kg) <span class="required">*</span></label>
+                        <input type="number" id="weight" step="0.01" min="0.01" class="form-control" placeholder="0.00"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>Edad</label>
+                        <input type="text" id="age" class="form-control" placeholder="Ej: 3 años">
+                    </div>
+                    <div class="form-group">
+                        <label>Clasificación ASA <span class="required">*</span></label>
+                        <select id="asa_class" class="form-control" required>
+                            <option value="I">ASA I - Paciente sano normal</option>
+                            <option value="II">ASA II - Enfermedad sistémica leve</option>
+                            <option value="III">ASA III - Enfermedad sistémica grave</option>
+                            <option value="IV">ASA IV - Enfermedad sistémica que amenaza la vida</option>
+                            <option value="V">ASA V - Moribundo que no sobrevivirá sin cirugía</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de Cirugía <span class="required">*</span></label>
+                        <select id="surgery_type" class="form-control" required>
+                            <option value="ovh">Ovariohisterectomía (OVH)</option>
+                            <option value="castration">Castración</option>
+                            <option value="cesarean">Cesárea</option>
+                            <option value="mastectomy">Mastectomía</option>
+                            <option value="laparotomy">Laparotomía Exploratoria</option>
+                            <option value="other">Otro procedimiento</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Duración Estimada (minutos) <span class="required">*</span></label>
+                        <input type="number" id="duration_estimated" min="1" class="form-control" placeholder="45"
+                            required>
+                    </div>
+                </div>
+
+                <!-- CHECKLIST QUIRÚRGICO E INFORMACIÓN ESPECÍFICA DE LA CIRUGÍA -->
+                <div id="surgery-profile-card" class="surgery-info-box m-3 hidden">
+                    <h4 id="surgery-profile-name">Cirugía Seleccionada</h4>
+                    <ul id="surgery-critical-points" class="critical-points-list">
+                        <!-- Poblado por JS -->
+                    </ul>
+                </div>
+            </div>
+
+            <!-- FASE B & C: DOSIFICACIÓN PROPONENTE -->
+            <h2 class="step-title" style="margin-top:1rem; font-size:1.5rem; font-weight:bold;">PASO 2 — Propofol y mezcla</h2>
+<div class="card mb-4">
+                <div class="card-header">
+                    <h3>Fase B & C: Objetivo de Propofol</h3>
+                </div>
+                <div class="card-body grid-2">
+                    <div class="form-group">
+                        <label>Dosis Objetivo (mg/kg/min) <span class="required">*</span></label>
+                        <input type="number" id="target_dose" step="0.01" min="0.01" class="form-control"
+                            placeholder="0.25" required>
+                        <span class="input-info-text" id="propofol-limits-ref">Dosis de referencia: ...</span>
+                    </div>
+                    <div class="form-group">
+                        <label>Concentración Comercial <span class="required">*</span></label>
+                        <select id="propofol_concentration" class="form-control" required>
+                            <option value="1%">Propofol 1% (10 mg/ml)</option>
+                            <option value="2%">Propofol 2% (20 mg/ml)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FASE D: DILUCIÓN EN RESERVORIO (SOLO EN MODO INFUSOMAT) -->
+            <div id="section-dilution" class="card mb-4 hidden">
+                <div class="card-header">
+                    <h3>Fase D: Dilución y Mezcla Anestésica</h3>
+                </div>
+                <div class="card-body">
+                    <p class="section-desc">Las bombas volumétricas exigen mayor volumen para operar con total
+                        precisión. Diluya el propofol en NaCl 0.9%:</p>
+
+                    <div class="form-group mb-3">
+                        <label>Volumen de NaCl 0,9% (Diluyente) <span class="required">*</span></label>
+                        <div class="quick-volumes-grid mb-2">
+                            <button type="button" class="btn btn-outline btn-sm btn-quick-vol" data-vol="20">20
+                                ml</button>
+                            <button type="button" class="btn btn-outline btn-sm btn-quick-vol" data-vol="40">40
+                                ml</button>
+                            <button type="button" class="btn btn-outline btn-sm btn-quick-vol" data-vol="50">50
+                                ml</button>
+                            <button type="button" class="btn btn-outline btn-sm btn-quick-vol" data-vol="100">100
+                                ml</button>
+                        </div>
+                        <input type="number" id="diluent_volume" step="0.1" min="0" class="form-control"
+                            placeholder="Volumen personalizado (ml)" required>
+                    </div>
+
+                    <!-- COMPOSICIÓN VISUAL DINÁMICA DE LA MEZCLA -->
+                    <div id="mixture-composition-box" class="mixture-chart-box hidden">
+                        <h4>Composición Física del Reservorio</h4>
+                        <div class="mixture-visual-bar">
+                            <div id="bar-propofol" class="bar-segment propofol-seg">Propofol</div>
+                            <div id="bar-saline" class="bar-segment saline-seg">NaCl 0.9%</div>
+                        </div>
+                        <div class="composition-legend grid-2 mt-2">
+                            <div><strong class="color-teal">Propofol Extraído:</strong> <span
+                                    id="lbl-propofol-composition">0 ml (0%)</span></div>
+                            <div><strong class="color-blue">Suero NaCl 0.9%:</strong> <span
+                                    id="lbl-saline-composition">0 ml (0%)</span></div>
+                            <div class="col-span-2 mt-1"><strong>Concentración resultante de la mezcla:</strong> <span
+                                    id="lbl-mix-concentration" class="font-bold">0.00 mg/ml</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="step-title" style="margin-top:1rem; font-size:1.5rem; font-weight:bold;">PASO 3 — Cebado</h2>
+<div id="section-priming" class="card mb-4">
+                <div class="card-header">
+                    <h3>Fase E: Cebado y Volumen Muerto</h3>
+                </div>
+                <div class="card-body grid-2">
+                    <div class="form-group col-span-2">
+                        <label>¿El set de infusión está cebado? <span class="required">*</span></label>
+                        <select id="line_primed" class="form-control">
+                            <option value="no">No, se encuentra vacío</option>
+                            <option value="yes">Sí, ya está purgado</option>
+                        </select>
+                    </div>
+<div class="form-group col-span-2">
+    <label>¿El set de infusión está cebado? <span class="required">*</span></label>
+    <select id="line_primed" class="form-control">
+        <option value="no">No, se encuentra vacío</option>
+        <option value="yes">Sí, ya está purgado</option>
+    </select>
+</div>
+<div class="form-group line-primed-options hidden">
+    <label>Cebado realizado con:</label>
+    <select id="prime_fluid" class="form-control">
+        <option value="suero">Suero fisiológico puro (Retrasa inicio)</option>
+        <option value="mezcla">La mezcla anestésica preparada</option>
+    </select>
+</div>
+<div class="form-group line-primed-options hidden">
+    <label>Volumen de cebado estimado (ml)</label>
+    <select id="priming_volume_selector" class="form-control">
+        <option value="short">Línea corta / extensión (2 ml)</option>
+        <option value="standard" selected>Línea estándar Infusomat (22 ml)</option>
+        <option value="long">Línea larga / con extensiones (40 ml)</option>
+        <option value="custom">Personalizado</option>
+    </select>
+    <input type="number" id="custom_priming_volume" class="form-control mt-1 hidden" placeholder="Volumen personalizado (ml)" min="0" step="0.1" />
+</div>
+                </div>
+            </div>
+
+            <button id="btn-calculate" class="btn btn-teal btn-block btn-lg mb-4">Calcular Plan de Infusión</button>
+
+        </section>
+
+        <!-- SECCIÓN DERECHA: PANTALLA LCD BOMBA, ALERTAS, REGISTRO, HISTORIAL -->
+        <section class="panel-results-section">
+
+            <!-- TARJETA ALERTAS CRÍTICAS E INTERACTIVAS (CRITICAL ALERT BANNER) -->
+            <div id="critical-alert-card" class="card card-danger mb-4 hidden">
+                <div class="card-header">
+                    <h3>¡ALERTA CRÍTICA DE SEGURIDAD!</h3>
+                </div>
+                <div class="card-body">
+                    <div id="critical-alert-messages" class="mb-3">
+                        <!-- Mensajes cargados dinámicamente -->
+                    </div>
+                    <div class="form-checkbox bg-slate p-3 rounded">
+                        <input type="checkbox" id="chk-accept-critical">
+                        <label for="chk-accept-critical" class="color-danger font-bold text-sm">
+                            Comprendo la advertencia clínica, asumo la responsabilidad médica y deseo continuar con el
+                            cálculo en este paciente.
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADVERTENCIAS CLÍNICAS ORDINARIAS (WARNINGS) -->
+            <div id="warning-alerts-card" class="card card-warning mb-4 hidden">
+                <div class="card-header">
+                    <h3>Advertencias Clínicas de Soporte</h3>
+                </div>
+                <div id="warning-alert-messages" class="card-body font-medium text-sm">
+                    <!-- Mensajes de advertencia (ASA III, Gato, tasas bajas, retraso) -->
+                </div>
+            </div>
+
+            <!-- FASE F: SIMULACIÓN DE PANTALLA B. BRAUN INFUSOMAT SPACE -->
+            <div id="section-bomba-simulator" class="card card-dark mb-4">
+                <div class="card-header">
+                    <h3>Así debe quedar programada la Infusomat Space</h3>
+                </div>
+                <div class="card-body">
+                    <!-- VIRTUAL LCD SCREEN -->
+                    <div class="bbraun-lcd">
+                        <div class="lcd-header">
+                            <span>B. BRAUN</span>
+                            <span class="lcd-status-label" id="lcd-pump-status">STOPPED</span>
+                        </div>
+                        <div class="lcd-body">
+                            <div class="lcd-metric">
+                                <span class="lbl">FLOW</span>
+                                <span class="val"><span id="lcd-flow-val">00.0</span> <small>ml/h</small></span>
+                            </div>
+                            <div class="lcd-metric">
+                                <span class="lbl">VTBI</span>
+                                <span class="val"><span id="lcd-vtbi-val">00.0</span> <small>ml</small></span>
+                            </div>
+                            <div class="lcd-metric">
+                                <span class="lbl">TIME</span>
+                                <span class="val" id="lcd-time-val">00:00 <small>hh:mm</small></span>
+                            </div>
+                        </div>
+                        <div class="lcd-footer">
+                            <span id="lcd-mode-indicator">MEZCLA PROPOFOL</span>
+                            <span id="lcd-alert-warning" class="color-yellow font-bold blink hidden">⚠ RIESGO</span>
+                        </div>
+                    </div>
+
+                    <!-- TABLA COMPLEMENTARIA DE RESULTADOS TEÓRICOS -->
+                    <table class="clinical-results-table mt-3">
+                        <thead>
+                            <tr>
+                                <th>Parámetro Teórico</th>
+                                <th>Valor Calculado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Propofol mg/min</td>
+                                <td><span id="res-mg-min">0.00</span> mg/min</td>
+                            </tr>
+                            <tr>
+                                <td>Propofol mg/h</td>
+                                <td><span id="res-mg-h">0.00</span> mg/h</td>
+                            </tr>
+                            <tr>
+                                <td>Propofol Teórico Cirugía (mg)</td>
+                                <td><span id="res-total-mg">0.00</span> mg</td>
+                            </tr>
+                            <tr>
+                                <td>Propofol Comercial a extraer (ml)</td>
+                                <td><span id="res-propofol-ml">0.00</span> ml</td>
+                            </tr>
+                            <tr class="row-pump-only">
+                                <td>Retraso Farmacológico Estimado</td>
+                                <td><span id="res-delay-time" class="font-bold">0.0</span> min</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- FASE G: MONITOREO FISIOLÓGICO Y REGISTRO EN VIVO -->
+            <h2 class="step-title" style="margin-top:1rem; font-size:1.5rem; font-weight:bold;">PASO 5 — Apoyo intraoperatorio</h2>
+<section id="section-intraoperatorio" class="card mb-4">
+                <div class="card-header">
+                    <h3>Fase G: Panel Intraoperatorio & Controles Analgésicos</h3>
+                </div>
+                <div class="card-body">
+                    <!-- SUBSECCIÓN: MONITORIZACIÓN FISIOLÓGICA -->
+                    <div class="intraop-subsection mb-3">
+                        <h4>Módulo Opcional de Monitorización Fisiológica</h4>
+                        <div class="physiological-inputs-grid">
+                            <div class="form-group">
+                                <label>FC (lpm)</label>
+                                <input type="number" id="fc" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>FR (rpm)</label>
+                                <input type="number" id="fr" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>SpO2 (%)</label>
+                                <input type="number" id="spo2" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>PAS (mmHg)</label>
+                                <input type="number" id="pas" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>PAM (mmHg)</label>
+                                <input type="number" id="pam" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>Temp (°C)</label>
+                                <input type="number" id="temp" step="0.1" class="form-control form-control-sm"
+                                    placeholder="--">
+                            </div>
+                            <div class="form-group">
+                                <label>ETCO2 (mmHg)</label>
+                                <input type="number" id="etco2" class="form-control form-control-sm" placeholder="--">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SUBSECCIÓN: REFUERZO DE KETAMINA -->
+                    <div class="intraop-subsection mb-3">
+                        <h4>Refuerzo Anticipatorio / Profundización con Ketamina</h4>
+                        <div class="grid-3 align-end">
+                            <div class="form-group">
+                                <label>Dosis Bolo (mg/kg)</label>
+                                <input type="number" id="ketamine_dose" step="0.1" value="0.5" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Concentración (mg/ml)</label>
+                                <input type="number" id="ketamine_conc" value="50.0" class="form-control">
+                            </div>
+                            <button id="btn-add-ketamine" class="btn btn-blue btn-block">Agregar Refuerzo</button>
+                        </div>
+                        <div class="reason-box mt-2">
+                            <label>Motivo del bolo de apoyo:</label>
+                            <input type="text" id="ketamine_reason" class="form-control form-control-sm"
+                                placeholder="Ej. Tracción de pedículo ovárico">
+                        </div>
+
+                        <!-- LÍNEA DE TIEMPO KETAMINA -->
+                        <div class="event-log-container mt-2" id="ketamine-event-log">
+                            <!-- Eventos registrados en JS -->
+                        </div>
+                    </div>
+
+                    <!-- SUBSECCIÓN: BLOQUEO LOCAL CON LIDOCAÍNA -->
+                    <div class="intraop-subsection mb-3">
+                        <h4>Límite de Anestésico Local (Lidocaína)</h4>
+                        <div class="grid-2 mb-2">
+                            <div class="form-group">
+                                <label>Dosis Máxima Límite (mg/kg)</label>
+                                <input type="number" id="lidocaine_max_dose" step="0.1" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Lidocaína Comercial (%)</label>
+                                <select id="lidocaine_conc_pct" class="form-control">
+                                    <option value="2.0">2.0% (20 mg/ml)</option>
+                                    <option value="1.0">1.0% (10 mg/ml)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- REGISTRO POR PLANOS ANATÓMICOS -->
+                        <div class="anatomical-blocks-grid">
+                            <div class="form-group">
+                                <label>Línea Alba (ml)</label>
+                                <input type="number" id="lido_linea_alba" step="0.05" value="0.0"
+                                    class="form-control form-control-sm lido-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Ligamentos (ml)</label>
+                                <input type="number" id="lido_ligamento" step="0.05" value="0.0"
+                                    class="form-control form-control-sm lido-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Peritoneal (ml)</label>
+                                <input type="number" id="lido_peritoneal" step="0.05" value="0.0"
+                                    class="form-control form-control-sm lido-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Piel (ml)</label>
+                                <input type="number" id="lido_piel" step="0.05" value="0.0"
+                                    class="form-control form-control-sm lido-input">
+                            </div>
+                        </div>
+
+                        <!-- INDICADOR DE TOXICIDAD SISTÉMICA -->
+                        <div class="toxicity-progress-container mt-3">
+                            <div class="progress-labels">
+                                <span>Lidocaína Acumulada: <strong id="lbl-lido-accumulated">0.00 ml / 0.00
+                                        mg</strong></span>
+                                <span id="lbl-lido-percentage" class="font-bold text-teal">0%</span>
+                            </div>
+                            <div class="progress-bar-wrapper">
+                                <div id="lido-toxicity-bar" class="progress-bar-fill pct-0"></div>
+                            </div>
+                            <div class="progress-footer mt-1">
+                                <span>Saldo Máximo Seguro Disponible: <strong id="lbl-lido-safe-balance">0.00
+                                        ml</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FASE H: REGISTRO DE TIEMPO Y VOLUMEN REAL -->
+                    <div class="intraop-subsection">
+                        <h4>Fase H: Conclusión e Informe Real de Anestesia</h4>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label>Duración Real Quirúrgica (minutos)</label>
+                                <input type="number" id="duration_real" class="form-control" placeholder="Ej: 50">
+                            </div>
+                            <div class="form-group">
+                                <label>Volumen de Mezcla Real Infundido (ml)</label>
+                                <input type="number" id="actual_volume_infused" step="0.1" class="form-control"
+                                    placeholder="Ej: 95.5">
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-2">
+                            <label>Notas Quirúrgicas y Observaciones Clínicas:</label>
+                            <textarea id="notes" class="form-control" rows="3"
+                                placeholder="Ej. El paciente mantuvo excelente estabilidad cardiovascular..."></textarea>
+                        </div>
+
+                        <!-- TABLA ANÁLISIS DOSIS REAL ADMINISTRADA -->
+                        <div id="real-dose-analysis-box" class="real-analysis-container mt-3 hidden">
+                            <h4>Auditoría de Dosificación Real Recibida</h4>
+                            <table class="clinical-results-table">
+                                <tbody>
+                                    <tr>
+                                        <td>Propofol total real administrado</td>
+                                        <td><span id="res-real-propofol-mg" class="font-bold">0.0</span> mg</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Dosis total acumulada por peso</td>
+                                        <td><span id="res-real-mg-kg">0.00</span> mg/kg</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Velocidad promedio administrada</strong></td>
+                                        <td><span id="res-real-avg-dose-rate" class="font-bold color-teal">0.00</span>
+                                            mg/kg/min</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE ACCIÓN DE PROCEDIMIENTO -->
+            <div id="card-action-controls" class="card mb-4 hidden">
+                <div class="card-body flex-row justify-between gap-2">
+                    <button id="btn-save-case" class="btn btn-teal flex-grow">Guardar Procedimiento</button>
+                    <button id="btn-generate-pdf" class="btn btn-outline flex-grow">Generar Informe PDF</button>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- TABLERO INICIAL DE AUDITORÍA Y DASHBOARD DE CASOS -->
+    <section class="dashboard-area container mt-4">
+        <div class="card">
+            <div class="card-header flex-row justify-between align-center">
+                <h2>Dashboard Clínico y Base de Datos del Historial</h2>
+                <div class="dev-actions">
+                    {% if debug %}
+                    <button id="btn-dev-populate" class="btn btn-dev btn-sm">Modo Dev: Generar Datos Simulación</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- TARJETAS DE MÉTRICAS AGREGADAS (MÍNIMO) -->
+            <div class="dashboard-stats-grid p-3">
+                <div class="stat-card">
+                    <span class="stat-lbl">Procedimientos de Hoy</span>
+                    <span id="stat-today" class="stat-val">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-lbl">Tiempo Promedio Quirúrgico</span>
+                    <span id="stat-avg-time" class="stat-val">0 <small>min</small></span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-lbl">Ovariohisterectomías (OVH)</span>
+                    <span id="stat-ovh" class="stat-val">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-lbl">Castraciones Realizadas</span>
+                    <span id="stat-castration" class="stat-val">0</span>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <!-- TABLA HISTORIAL -->
+                <div class="table-scroll-container">
+                    <table class="clinical-results-table text-left" id="table-history">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Paciente</th>
+                                <th>Cirugía</th>
+                                <th>Peso (kg)</th>
+                                <th>ASA</th>
+                                <th>Tiempo Real</th>
+                                <th>Velocidad Media</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Poblado dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ÁREA DE SISTEMA DE RESPALDO Y CONFIGURACIÓN -->
+    <section class="backup-area container mt-4 mb-5">
+        <div class="card">
+            <div class="card-header">
+                <h2>Administración del Sistema, Respaldos y Auditoría</h2>
+            </div>
+            <div class="card-body">
+                <div class="backup-grid">
+                    <div class="backup-control-panel">
+                        <h4>Respaldar & Restaurar Base de Datos</h4>
+                        <p class="text-sm text-slate mb-3">La aplicación guarda todos los datos localmente en SQLite.
+                            Utilice estas herramientas para prevenir pérdidas por borrado o cambios de ordenador.</p>
+                        <div class="flex-row gap-2 flex-wrap">
+                            <a href="/api/backup/export" class="btn btn-outline btn-sm">Exportar Respaldo (.json)</a>
+                            <a href="/api/backup/db" class="btn btn-outline btn-sm">Descargar Base Completa (SQLite)</a>
+                            <div class="import-wrapper mt-2">
+                                <label for="backup_file" class="btn btn-outline btn-sm cursor-pointer">Importar Respaldo
+                                    JSON</label>
+                                <input type="file" id="backup_file" class="hidden" accept=".json">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="audit-log-panel">
+                        <h4>Trazabilidad del Sistema (Últimos Eventos)</h4>
+                        <div class="audit-log-terminal" id="audit-log-terminal">
+                            <!-- Logs de auditoría cargados desde JSON -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="app-footer-note text-center mt-5 p-4 bg-slate">
+        <p>SafeAnesthesia Infusomat Propofol Module es un componente clínico autónomo preparado para su integración en
+            el ecosistema PartenVet.</p>
+        <p class="text-xs text-slate">&copy; 2026 Dr. Felipe Inostroza. Todos los derechos reservados.</p>
+    </footer>
+
+    <!-- MODAL DE CAMBIO DE CONTRASEÑA -->
+    <div id="password-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h3>Cambiar Contraseña Administrador</h3>
+            <div class="form-group mb-3 text-left">
+                <label>Contraseña Actual</label>
+                <input type="password" id="old_password" class="form-control">
+            </div>
+            <div class="form-group mb-3 text-left">
+                <label>Nueva Contraseña</label>
+                <input type="password" id="new_password" class="form-control">
+            </div>
+            <div class="flex-row gap-2 mt-3 justify-end">
+                <button id="btn-close-password-modal" class="btn btn-outline btn-sm">Cancelar</button>
+                <button id="btn-save-new-password" class="btn btn-teal btn-sm">Guardar Nueva Contraseña</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CARGA DE LIBRERÍAS Y SCRIPTS FRONTEND -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>

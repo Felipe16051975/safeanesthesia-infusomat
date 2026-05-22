@@ -1,0 +1,75 @@
+{
+  "app": {
+    "title": "SafeAnesthesia Infusomat Propofol Module",
+    "subtitle": "Módulo Clínico Veterinaro para Mantenimiento Volumétrico con Bomba B. Braun Infusomat Space",
+    "dev_mode_badge": "MODO DESARROLLO ACTIVO"
+  },
+  "login": {
+    "username": "Usuario",
+    "password": "Contraseña",
+    "button": "Iniciar Sesión",
+    "remember": "Recordar sesión",
+    "invalid": "Credenciales inválidas.",
+    "required": "Debe iniciar sesión para utilizar la herramienta."
+  },
+  "sections": {
+    "patient": "Datos del Paciente",
+    "propofol": "Objetivo y Mantenimiento con Propofol",
+    "dilution": "Preparación de la Mezcla y Dilución",
+    "cebado": "Gestión de Cebado de Línea",
+    "pump": "Programación del Infusomat Space",
+    "ketamine": "Refuerzo Anticipatorio / Profundización (Ketamina)",
+    "lidocaine": "Límetro de Anestésico Local (Lidocaína)",
+    "checklist": "Checklist de Seguridad Clínica",
+    "real": "Registro e Informe Intraoperatorio Real",
+    "history": "Historial de Anestesias Realizadas",
+    "dashboard": "Dashboard Clínico Veterinario",
+    "audit": "Bitácora de Auditoría del Sistema",
+    "backup": "Administración de Respaldos"
+  },
+  "fields": {
+    "name": "Nombre Paciente",
+    "species": "Especie",
+    "breed": "Raza",
+    "weight": "Peso (kg)",
+    "age": "Edad",
+    "asa": "Clasificación ASA",
+    "surgery": "Tipo de Cirugía",
+    "duration_est": "Duración Estimada (minutos)",
+    "dose_obj": "Dosis Objetivo (mg/kg/min)",
+    "propofol_pct": "Concentración Comercial",
+    "diluent": "Volumen Diluyente NaCl 0,9%",
+    "line_primed": "¿La línea está cebada?",
+    "prime_fluid": "Línea cebada con:",
+    "dead_volume": "Volumen Muerto Estimado (ml)",
+    "fc": "Frecuencia Cardíaca (FC lpm)",
+    "fr": "Frecuencia Respiratoria (FR rpm)",
+    "spo2": "Saturación Oxígeno (SpO2 %)",
+    "pas": "Presión Sistólica (PAS mmHg)",
+    "pam": "Presión Media (PAM mmHg)",
+    "temp": "Temperatura (°C)",
+    "etco2": "Dióxido de Carbono (ETCO2 mmHg)",
+    "real_time": "Duración Real Quirúrgica (min)",
+    "real_volume": "Volumen de Mezcla Infundido (ml)",
+    "notes": "Observaciones Clínicas / Notas de Cirugía"
+  },
+  "buttons": {
+    "calculate": "Calcular Plan Teórico",
+    "save": "Guardar Procedimiento",
+    "duplicate": "Usar como Plantilla",
+    "export_pdf": "Generar Informe PDF Quirúrgico",
+    "add_ketamine": "Registrar Bolo de Ketamina",
+    "add_lidocaine": "Registrar Lidocaína por Plano",
+    "backup_json": "Exportar Respaldo (.json)",
+    "import_json": "Importar Respaldo (.json)",
+    "download_db": "Descargar SQLite (database.db)",
+    "populate_dev": "Generar 10 Casos de Ejemplo (Modo Dev)",
+    "confirm_critical": "Comprendo la advertencia clínica, asumo la responsabilidad y deseo continuar"
+  },
+  "disclaimers": {
+    "consent_title": "Consentimiento de Operación Médica y Responsabilidad",
+    "consent_text": "Este sistema representa una herramienta matemática de apoyo para dosificación e infusión en bomba volumétrica. Bajo ninguna circunstancia reemplaza el criterio médico-quirúrgico del médico veterinario a cargo, ni la monitorización cardiorrespiratoria intensiva del paciente. Las dosis recomendadas por defecto son de referencia y deben ajustarse y validarse por el clínico responsable antes de su uso.",
+    "consent_button": "Confirmo que soy profesional veterinario y usaré monitorización anestésica",
+    "footer_note": "SafeAnesthesia es un módulo transquirúrgico de soporte anestésico preparado para sincronización futura con PartenVet."
+  }
+}

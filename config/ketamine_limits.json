@@ -1,0 +1,13 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "last_review": "2026-05-22",
+    "reviewed_by": "Dr. Felipe Inostroza",
+    "clinical_notes": "Valores configurables de referencia para bolos analgésicos de refuerzo o profundización. Validar con bibliografía antes de uso clínico."
+  },
+  "limits": {
+    "defaultConcentration": 50.0,
+    "maxBoloDose": 2.0,
+    "suggestedBoloDose": 0.5
+  }
+}

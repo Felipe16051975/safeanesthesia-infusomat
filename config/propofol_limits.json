@@ -1,0 +1,22 @@
+{
+  "_metadata": {
+    "version": "1.0",
+    "last_review": "2026-05-22",
+    "reviewed_by": "Dr. Felipe Inostroza",
+    "clinical_notes": "Valores configurables de referencia para infusión continua en bomba volumétrica. Validar con bibliografía científica antes de uso clínico real."
+  },
+  "limits": {
+    "dog": {
+      "minDose": 0.1,
+      "maxDose": 0.4,
+      "warningThreshold": 0.45,
+      "criticalThreshold": 0.6
+    },
+    "cat": {
+      "minDose": 0.1,
+      "maxDose": 0.3,
+      "warningThreshold": 0.35,
+      "criticalThreshold": 0.5
+    }
+  }
+}
