@@ -8,33 +8,131 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        /* === Global overflow prevention === */
         html, body {
             max-width: 100%;
             overflow-x: hidden;
         }
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        /* === Hospital mode: single-column layout === */
+        #hospital-mode {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .clinical-step {
+            margin-bottom: 42px;
+        }
+
+        .clinical-step h2 {
+            margin-bottom: 20px;
+        }
+
+        /* === Form grid: 2 columns, responsive === */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 900px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .full-width {
+                grid-column: 1;
+            }
+        }
+
+        /* === Dehydration radio options === */
+        .dehy-options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .dehy-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            background: rgba(15, 23, 42, 0.35);
+            cursor: pointer;
+            transition: border-color 0.2s, background 0.2s;
+            font-size: 0.88rem;
+            color: var(--color-text-main);
+        }
+
+        .dehy-option:hover {
+            border-color: rgba(13, 148, 136, 0.5);
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .dehy-option input[type="radio"] {
+            accent-color: var(--color-teal);
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .dehy-option:has(input:checked) {
+            border-color: var(--color-teal);
+            background: rgba(13, 148, 136, 0.1);
+        }
+
+        /* === Info details (collapsible panel) === */
+        .info-details summary {
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--color-teal-light);
+            font-weight: 500;
+            padding: 6px 0;
+        }
+
+        .info-details summary:hover {
+            color: var(--color-teal);
+        }
+
+        /* === App main layout override for hospital === */
         .app-main-layout {
             grid-template-columns: 1fr;
             max-width: 1100px;
         }
+
         .card {
             box-sizing: border-box;
             max-width: 100%;
         }
+
+        /* === Print-only visibility === */
         .print-only {
-            display: none;
+            display: none !important;
         }
+
         @media print {
             body * {
                 visibility: hidden;
             }
-            .print-only {
-                display: block;
+            .print-only.active-print {
+                display: block !important;
             }
-            #print-summary, #print-summary * {
+            .print-only.active-print,
+            .print-only.active-print * {
                 visibility: visible;
             }
-            #print-summary {
-                position: absolute;
+            .print-only.active-print {
+                position: fixed;
                 left: 0;
                 top: 0;
                 width: 100%;
@@ -54,8 +152,8 @@
     <header class="app-header">
         <div class="header-container">
             <div class="branding">
-                <h1>SafeAnesthesia <span>Pre-Q</span></h1>
-                <p>Planificación Pre-Quirúrgica Simplificada</p>
+                <h1>SafeAnesthesia <span id="mode-title-span">Pre-Q</span></h1>
+                <p id="mode-subtitle-p">Planificación Pre-Quirúrgica Simplificada</p>
             </div>
             <div class="user-meta-controls">
                 <span class="user-name">Usuario: {{ current_user.username if current_user.is_authenticated else 'Invitado' }}</span>
@@ -64,7 +162,14 @@
         </div>
     </header>
 
+    <div class="mode-selector-container text-center py-3 bg-slate mb-4">
+        <button id="btn-mode-preq" class="btn btn-teal">Pre-Q Anestesia</button>
+        <button id="btn-mode-hospital" class="btn btn-outline">Hospital / CRI</button>
+    </div>
+
     <main class="app-main-layout" id="pdf-content">
+        <!-- PRE-Q MODE -->
+        <div id="pre-q-mode">
         <!-- PASO 1 -->
         <h2 class="step-title">PASO 1 — Paciente y cirugía</h2>
         <div class="card mb-4">
@@ -258,12 +363,271 @@
             </div>
         </div>
         
+        </div> <!-- CIERRE DE PRE-Q MODE -->
+
+        <!-- HOSPITAL MODE -->
+        <div id="hospital-mode" style="display: none;">
+
+            <!-- PASO 1 — Paciente hospitalizado -->
+            <section class="clinical-step">
+                <h2 class="step-title">PASO 1 — Paciente hospitalizado</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Nombre</label>
+                                <input type="text" id="hosp_patient_name" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Especie</label>
+                                <select id="hosp_species" class="form-control">
+                                    <option value="dog">Perro</option>
+                                    <option value="cat">Gato</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Peso (kg)</label>
+                                <input type="number" id="hosp_weight" step="0.1" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Edad <small class="color-slate">(ej: 3 meses, 2 años)</small></label>
+                                <input type="text" id="hosp_age" class="form-control">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Motivo de hospitalización</label>
+                                <input type="text" id="hosp_reason" class="form-control" list="hospital-reasons">
+                                <datalist id="hospital-reasons">
+                                    <option value="parvovirus">
+                                    <option value="gastroenteritis">
+                                    <option value="vómitos/diarrea">
+                                    <option value="anorexia">
+                                    <option value="postoperatorio">
+                                    <option value="shock/deshidratación">
+                                    <option value="enfermedad renal">
+                                    <option value="descompensación">
+                                    <option value="otro">
+                                </datalist>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PASO 2 — Sueroterapia -->
+            <section class="clinical-step">
+                <h2 class="step-title">PASO 2 — Sueroterapia</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <!-- Estado de hidratación -->
+                            <div class="form-group full-width">
+                                <label>Estado de hidratación</label>
+                                <div id="hosp_dehydration_selector" class="dehy-options">
+                                    <label class="dehy-option">
+                                        <input type="radio" name="hosp_dehydration" id="dehy_none" value="0" checked>
+                                        <span>&lt;4% Sin alteraciones evidentes</span>
+                                    </label>
+                                    <label class="dehy-option">
+                                        <input type="radio" name="hosp_dehydration" id="dehy_leve" value="5">
+                                        <span>4–6% Leve</span>
+                                    </label>
+                                    <label class="dehy-option">
+                                        <input type="radio" name="hosp_dehydration" id="dehy_moderada" value="7">
+                                        <span>6–8% Moderada</span>
+                                    </label>
+                                    <label class="dehy-option">
+                                        <input type="radio" name="hosp_dehydration" id="dehy_severa" value="9">
+                                        <span>8–10% Severa</span>
+                                    </label>
+                                    <label class="dehy-option">
+                                        <input type="radio" name="hosp_dehydration" id="dehy_shock" value="11">
+                                        <span>10–12% Shock / Muy severa</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Deshidratación estimada (%):</label>
+                                <input type="number" id="hosp_dehydration_estimated" step="1" class="form-control" value="0">
+                            </div>
+
+                            <!-- Pérdidas patológicas -->
+                            <div class="form-group full-width">
+                                <label>Pérdidas patológicas estimadas</label>
+                                <select id="hosp_losses_type" class="form-control">
+                                    <option value="none">Sin pérdidas evidentes</option>
+                                    <option value="vomitos_leve">Vómitos leves</option>
+                                    <option value="vomitos_moderado">Vómitos moderados</option>
+                                    <option value="vomitos_severo">Vómitos severos</option>
+                                    <option value="diarrea_leve">Diarrea leve</option>
+                                    <option value="diarrea_moderada">Diarrea moderada</option>
+                                    <option value="diarrea_severa">Diarrea severa</option>
+                                    <option value="vomitos_diarrea">Vómitos + diarrea</option>
+                                    <option value="poliuria">Poliuria</option>
+                                    <option value="sangrado">Sangrado / drenaje</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                                <input type="number" id="hosp_losses_custom" class="form-control mt-2 hidden" placeholder="ml">
+                            </div>
+
+                            <!-- Tiempo de reposición -->
+                            <div class="form-group full-width">
+                                <label>Tiempo de reposición</label>
+                                <select id="hosp_fluid_hours" class="form-control">
+                                    <option value="4">4 h</option>
+                                    <option value="6">6 h</option>
+                                    <option value="8">8 h</option>
+                                    <option value="12">12 h</option>
+                                    <option value="24" selected>24 h</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                                <input type="number" id="hosp_fluid_hours_custom" class="form-control mt-2 hidden" placeholder="Horas">
+                            </div>
+
+                            <!-- Resultados de fluidos -->
+                            <div class="full-width mt-3 p-3 bg-slate rounded" id="hosp-fluid-results" style="display:none;">
+                                <ul class="text-sm">
+                                    <li>Mantención: <span id="hosp-maint-day"></span> ml/día (<span id="hosp-maint-h"></span> ml/h)</li>
+                                    <li>Déficit por deshidratación: <span id="hosp-deficit"></span> ml</li>
+                                    <li>Pérdidas continuas: <span id="hosp-losses-res"></span> ml</li>
+                                    <li class="font-bold text-teal mt-1">Volumen total del periodo: <span id="hosp-total-vol"></span> ml</li>
+                                </ul>
+                            </div>
+
+                            <!-- Panel informativo Hidratación vs Volemía -->
+                            <div class="full-width mt-3">
+                                <details class="info-details">
+                                    <summary>ⓘ Hidratación vs Volemía</summary>
+                                    <div class="p-3 bg-slate rounded mt-2">
+                                        <strong>Hidratación:</strong>
+                                        <ul class="text-sm" style="padding-left: 1.2rem; margin: 0.3rem 0 0.6rem;">
+                                            <li>Pliegue cutáneo</li>
+                                            <li>Humedad de mucosas</li>
+                                            <li>Enoftalmia</li>
+                                        </ul>
+                                        <strong>Volemía / perfusión:</strong>
+                                        <ul class="text-sm" style="padding-left: 1.2rem; margin: 0.3rem 0 0;">
+                                            <li>Frecuencia cardíaca</li>
+                                            <li>TRC</li>
+                                            <li>Presión arterial</li>
+                                            <li>Color de mucosas</li>
+                                            <li>Calidad de pulso</li>
+                                        </ul>
+                                    </div>
+                                </details>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PASO 3 — CRI / Medicamentos en Bomba -->
+            <section class="clinical-step">
+                <h2 class="step-title">PASO 3 — CRI / Medicamentos en Bomba</h2>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label>Fármaco Sugerido</label>
+                                <input type="text" id="hosp_cri_drug" class="form-control" placeholder="Escriba o seleccione un fármaco" list="cri_drugs">
+                                <datalist id="cri_drugs">
+                                    <option value="metoclopramida">
+                                    <option value="lidocaína CRI">
+                                    <option value="dopamina">
+                                    <option value="dobutamina">
+                                    <option value="furosemida">
+                                    <option value="butorfanol">
+                                    <option value="midazolam">
+                                    <option value="diazepam">
+                                </datalist>
+                            </div>
+                            <div class="form-group">
+                                <label>Dosis</label>
+                                <input type="number" id="hosp_cri_dose" step="0.01" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Unidad</label>
+                                <select id="hosp_cri_unit" class="form-control">
+                                    <option value="mg/kg/h">mg/kg/h</option>
+                                    <option value="mcg/kg/min">mcg/kg/min</option>
+                                    <option value="mg/kg/day">mg/kg/día</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Concentración comercial (mg/ml)</label>
+                                <input type="number" id="hosp_cri_conc" step="0.1" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Volumen final de dilución (ml)</label>
+                                <input type="number" id="hosp_cri_final_vol" step="1" class="form-control" value="100">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>Duración (horas)</label>
+                                <input type="number" id="hosp_cri_hours" step="1" class="form-control" value="24">
+                            </div>
+
+                            <div class="full-width mt-3 p-3 bg-slate rounded" id="hosp-cri-results" style="display:none;">
+                                <p class="font-bold text-teal" id="hosp-cri-text" style="font-size: 1.1rem;"></p>
+                                <ul class="text-sm mt-2">
+                                    <li>Total fármaco: <span id="hosp-cri-total-mg"></span> mg</li>
+                                    <li>Extraer fármaco: <span id="hosp-cri-drug-ml"></span> ml</li>
+                                    <li>Suero base: <span id="hosp-cri-base-ml"></span> ml</li>
+                                    <li>Concentración final: <span id="hosp-cri-final-conc"></span> mg/ml</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <button id="btn-calculate-hosp" class="btn btn-teal btn-block btn-lg mb-4">Calcular Hospital / CRI</button>
+
+            <!-- PASO 4 — Programación Infusomat -->
+            <section class="clinical-step">
+                <h2 class="step-title">PASO 4 — Programación Infusomat</h2>
+                <div class="form-grid">
+                    <div class="card card-dark">
+                        <div class="card-header">
+                            <h3>Sueroterapia</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="bbraun-lcd">
+                                <div class="lcd-header"><span>B. BRAUN</span><span id="lcd-hosp-fluid-status" class="color-yellow">ESPERANDO CÁLCULO</span></div>
+                                <div class="lcd-body">
+                                    <div class="lcd-metric"><span class="lbl">FLOW</span><span class="val"><span id="lcd-hosp-fluid-flow">--</span> <small>ml/h</small></span></div>
+                                    <div class="lcd-metric"><span class="lbl">VTBI</span><span class="val"><span id="lcd-hosp-fluid-vtbi">--</span> <small>ml</small></span></div>
+                                    <div class="lcd-metric"><span class="lbl">TIME</span><span class="val" id="lcd-hosp-fluid-time">--:-- <small>hh:mm</small></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-dark">
+                        <div class="card-header">
+                            <h3>CRI / Medicamento</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="bbraun-lcd">
+                                <div class="lcd-header"><span>B. BRAUN</span><span id="lcd-hosp-cri-status" class="color-yellow">ESPERANDO CÁLCULO</span></div>
+                                <div class="lcd-body">
+                                    <div class="lcd-metric"><span class="lbl">FLOW</span><span class="val"><span id="lcd-hosp-cri-flow">--</span> <small>ml/h</small></span></div>
+                                    <div class="lcd-metric"><span class="lbl">VTBI</span><span class="val"><span id="lcd-hosp-cri-vtbi">--</span> <small>ml</small></span></div>
+                                    <div class="lcd-metric"><span class="lbl">TIME</span><span class="val" id="lcd-hosp-cri-time">--:-- <small>hh:mm</small></span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <p class="text-sm color-yellow mb-4 text-center">Este cálculo no reemplaza la evaluación clínica de hidratación, perfusión, presión arterial, electrolitos, función renal, pérdidas activas ni respuesta del paciente.</p>
+        </div> <!-- CIERRE DE HOSPITAL MODE -->
+
         <div class="flex-row gap-2 mb-5">
             <button id="btn-print" class="btn btn-outline flex-grow">Vista Previa / Imprimir Carta</button>
             <button id="btn-pdf" class="btn btn-outline flex-grow">Guardar como PDF desde impresión</button>
         </div>
 
-        <!-- CONTENEDOR DE IMPRESIÓN (OCULTO EN PANTALLA NORMAL) -->
+        <!-- CONTENEDOR DE IMPRESIÓN PRE-Q -->
         <div id="print-summary" class="print-only">
             <h2 style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 5px;">Resumen prequirúrgico SafeAnesthesia</h2>
             
@@ -316,6 +680,51 @@
                     <p><strong>VTBI:</strong> <span id="pr_fluid_vtbi"></span> ml</p>
                     <p><strong>TIME:</strong> <span id="pr_fluid_time"></span> hh:mm</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- CONTENEDOR DE IMPRESIÓN HOSPITAL / CRI -->
+        <div id="print-summary-hospital" class="print-only" style="display: none;">
+            <h2 style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 5px;">Resumen Hospital / CRI SafeAnesthesia</h2>
+            
+            <div style="margin-top: 15px;">
+                <h3>A. Paciente Hospitalizado</h3>
+                <p><strong>Nombre:</strong> <span id="pr_hosp_name"></span> &nbsp;|&nbsp; <strong>Especie:</strong> <span id="pr_hosp_species"></span></p>
+                <p><strong>Peso:</strong> <span id="pr_hosp_weight"></span> kg &nbsp;|&nbsp; <strong>Edad:</strong> <span id="pr_hosp_age"></span></p>
+                <p><strong>Motivo de hospitalización:</strong> <span id="pr_hosp_reason"></span></p>
+
+            </div>
+
+            <div style="margin-top: 15px;">
+                <h3>B. Fluidoterapia</h3>
+                <p><strong>Mantención diaria:</strong> <span id="pr_hosp_maint_day"></span> ml/día</p>
+                <p><strong>Déficit por deshidratación:</strong> <span id="pr_hosp_deficit"></span> ml</p>
+                <p><strong>Pérdidas continuas:</strong> <span id="pr_hosp_losses"></span> ml</p>
+                <p><strong>Volumen total del periodo:</strong> <span id="pr_hosp_total_vol"></span> ml</p>
+                
+                <div style="border: 2px solid #000; padding: 10px; width: 50%; font-family: monospace; font-size: 14pt; margin-top: 10px;">
+                    <p><strong>FLOW:</strong> <span id="pr_hosp_lcd_fluid_flow"></span> ml/h</p>
+                    <p><strong>VTBI:</strong> <span id="pr_hosp_lcd_fluid_vtbi"></span> ml</p>
+                    <p><strong>TIME:</strong> <span id="pr_hosp_lcd_fluid_time"></span> hh:mm</p>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <h3>C. CRI / Medicamento en Bomba</h3>
+                <p><strong>Fármaco:</strong> <span id="pr_hosp_cri_drug"></span> &nbsp;|&nbsp; <strong>Dosis:</strong> <span id="pr_hosp_cri_dose"></span></p>
+                <p><strong>Fármaco a extraer:</strong> <span id="pr_hosp_cri_drug_ml"></span> ml</p>
+                <p><strong>Suero base a agregar:</strong> <span id="pr_hosp_cri_base_ml"></span> ml</p>
+                <p><strong>Volumen final:</strong> <span id="pr_hosp_cri_final_vol"></span> ml</p>
+                
+                <div style="border: 2px solid #000; padding: 10px; width: 50%; font-family: monospace; font-size: 14pt; margin-top: 10px;">
+                    <p><strong>FLOW:</strong> <span id="pr_hosp_lcd_cri_flow"></span> ml/h</p>
+                    <p><strong>VTBI:</strong> <span id="pr_hosp_lcd_cri_vtbi"></span> ml</p>
+                    <p><strong>TIME:</strong> <span id="pr_hosp_lcd_cri_time"></span> hh:mm</p>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; font-weight: bold; text-align: center; color: #666; font-size: 10pt;">
+                <p>Este cálculo no reemplaza la evaluación clínica de hidratación, perfusión, presión arterial, electrolitos, función renal, pérdidas activas ni respuesta del paciente.</p>
             </div>
         </div>
     </main>
