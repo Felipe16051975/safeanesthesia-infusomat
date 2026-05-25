@@ -1,32 +1,36 @@
 import pytest
-from services.hospital_fluids_service import calculate_hospital_fluids
+from services.hospital_fluids_service import calculate_fluid_therapy, get_fluid_recommendation
 
-def test_maintenance_dog():
-    res = calculate_hospital_fluids(weight_kg=10, species="dog", dehydration_pct=0, losses_ml=0, replacement_hours=24)
-    # 10 kg dog * 60 ml/kg/day = 600 ml/day
-    assert res["maintenance_ml_day"] == 600
-    assert res["maintenance_ml_h"] == 25  # 600 / 24
+def test_fluid_therapy_calculation():
+    """
+    - Fluidoterapia base: déficit + mantención + pérdidas.
+    - 50 ml/kg/día
+    """
+    # Perro 10 kg, deshidratación 5%, perdidas 100ml
+    weight_kg = 10
+    dehydration_percent = 5
+    losses = 100
+    
+    res = calculate_fluid_therapy(
+        weight_kg, dehydration_percent, losses,
+        main_problem="Gastroenteritis", renal_state="Normal", hepatic_state="Normal"
+    )
+    
+    # deficit = 10 * 5 * 10 = 500
+    assert res['deficit_ml'] == 500
+    # maintenance = 10 * 50 = 500
+    assert res['maintenance_ml'] == 500
+    # continuous = 100
+    assert res['continuous_losses_ml'] == 100
+    # total = 1100
+    assert res['total_volume_ml'] == 1100
+    # flow_ml_h = 1100 / 24 = 45.83
+    assert res['flow_ml_h'] == round(1100 / 24, 2)
+    
+    assert res['recommendation']['fluid'] == "Ringer Lactato"
 
-def test_maintenance_cat():
-    res = calculate_hospital_fluids(weight_kg=5, species="cat", dehydration_pct=0, losses_ml=0, replacement_hours=24)
-    # 5 kg cat * 60 ml/kg/day = 300 ml/day (midpoint of 50-70 ml/kg/día range)
-    assert res["maintenance_ml_day"] == 300
-    assert res["maintenance_ml_h"] == round(300/24, 2)
-
-def test_dehydration_deficit():
-    # 10 kg dog with 5% dehydration
-    res = calculate_hospital_fluids(weight_kg=10, species="dog", dehydration_pct=5, losses_ml=0, replacement_hours=24)
-    # deficit = 10 * 0.05 * 1000 = 500 ml
-    assert res["deficit_ml"] == 500
-
-def test_losses_and_total_volume():
-    # 10 kg dog, 5% dehy, 100 ml losses, over 6 hours
-    res = calculate_hospital_fluids(weight_kg=10, species="dog", dehydration_pct=5, losses_ml=100, replacement_hours=6)
-    # Maint day = 600, Maint h = 25
-    # Maint in 6h = 150
-    # Deficit = 500
-    # Losses = 100
-    # Total = 150 + 500 + 100 = 750
-    assert res["total_volume_in_period"] == 750
-    assert res["flow_ml_h"] == 750 / 6
-    assert res["vtbi_ml"] == 750
+def test_fluid_recommendation_renal():
+    res = get_fluid_recommendation(
+        main_problem="Otro", renal_state="Oliguria", hepatic_state="Normal"
+    )
+    assert res['fluid'] == "NaCl 0,9%"

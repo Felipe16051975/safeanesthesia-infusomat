@@ -1,53 +1,63 @@
-def calculate_hospital_cri(weight_kg, dose, unit, concentration_mg_ml, final_volume_ml, duration_hours):
+import json
+import os
+
+def load_drugs_config():
+    config_path = os.path.join(os.path.dirname(__file__), '..', 'config', 'drugs_cri.json')
+    if not os.path.exists(config_path):
+        return {}
+    with open(config_path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+def build_cri(drugs_input, bag_volume_ml, species):
     """
-    Calcula una Infusión Continua (CRI) genérica.
-    
-    :param weight_kg: Peso del paciente (kg).
-    :param dose: Dosis objetivo.
-    :param unit: Unidad de la dosis ("mg/kg/h", "mcg/kg/min", "mg/kg/day").
-    :param concentration_mg_ml: Concentración comercial del fármaco (mg/ml).
-    :param final_volume_ml: Volumen final de la dilución deseado (ml).
-    :param duration_hours: Duración de la infusión (horas).
-    :return: Diccionario con los resultados del cálculo.
+    drugs_input: list of dicts: [{'id': 'lidocaine', 'target_mg_L': 1000, 'commercial_mg_ml': 20}, ...]
     """
+    config = load_drugs_config()
     
-    if unit == "mg/kg/h":
-        total_mg = dose * weight_kg * duration_hours
-    elif unit == "mcg/kg/min":
-        # mcg totales por minuto
-        mcg_per_min = dose * weight_kg
-        # mg totales en la duración (minutos)
-        total_mg = (mcg_per_min * (duration_hours * 60)) / 1000.0
-    elif unit == "mg/kg/day":
-        # mg totales en un día
-        mg_per_day = dose * weight_kg
-        # mg en la cantidad de horas dadas
-        total_mg = mg_per_day * (duration_hours / 24.0)
-    else:
-        raise ValueError(f"Unidad de dosis no soportada: {unit}")
-
-    # ml a extraer del fármaco
-    drug_ml = total_mg / concentration_mg_ml if concentration_mg_ml > 0 else 0
-
-    # ml de suero base a usar
-    base_fluid_ml = final_volume_ml - drug_ml
-    if base_fluid_ml < 0:
-        base_fluid_ml = 0 # No se puede diluir, el volumen final es menor que el fármaco requerido
-
-    # Concentración final en la mezcla
-    final_concentration_mg_ml = total_mg / final_volume_ml if final_volume_ml > 0 else 0
-
-    # Parámetros de la bomba
-    flow_ml_h = final_volume_ml / duration_hours if duration_hours > 0 else 0
-    vtbi_ml = final_volume_ml
-
+    results = {}
+    total_ml_to_add = 0.0
+    warnings = []
+    
+    for d in drugs_input:
+        drug_id = d['id']
+        target_mg_L = float(d['target_mg_L'])
+        commercial_mg_ml = float(d['commercial_mg_ml'])
+        
+        drug_info = config.get(drug_id, {})
+        
+        # Check warnings
+        if species in drug_info.get('warning_species', {}):
+            warnings.append(drug_info['warning_species'][species])
+            
+        # Calculation
+        # mg necesarios = (concentración objetivo mg/L / 1000) * volumen bolsa ml
+        mg_needed = (target_mg_L / 1000.0) * bag_volume_ml
+        
+        # ml a agregar = mg necesarios / concentración comercial mg/ml
+        ml_to_add = mg_needed / commercial_mg_ml if commercial_mg_ml > 0 else 0
+        
+        total_ml_to_add += ml_to_add
+        
+        # Validation
+        final_concentration_mg_L = (mg_needed / bag_volume_ml) * 1000 if bag_volume_ml > 0 else 0
+        final_concentration_mg_ml = mg_needed / bag_volume_ml if bag_volume_ml > 0 else 0
+        
+        diff_percent = abs(final_concentration_mg_L - target_mg_L) / target_mg_L * 100 if target_mg_L > 0 else 0
+        
+        results[drug_id] = {
+            "name": drug_info.get('name', drug_id),
+            "target_mg_L": target_mg_L,
+            "commercial_mg_ml": commercial_mg_ml,
+            "mg_needed": round(mg_needed, 2),
+            "ml_to_add": round(ml_to_add, 2),
+            "final_concentration_mg_L": round(final_concentration_mg_L, 2),
+            "final_concentration_mg_ml": round(final_concentration_mg_ml, 4),
+            "diff_percent": round(diff_percent, 4)
+        }
+        
     return {
-        "total_mg": round(total_mg, 2),
-        "drug_ml": round(drug_ml, 2),
-        "base_fluid_ml": round(base_fluid_ml, 2),
-        "final_volume_ml": round(final_volume_ml, 2),
-        "final_concentration_mg_ml": round(final_concentration_mg_ml, 3),
-        "flow_ml_h": round(flow_ml_h, 2),
-        "vtbi_ml": round(vtbi_ml, 2),
-        "time_h": duration_hours
+        "drugs": results,
+        "volume_to_withdraw_ml": round(total_ml_to_add, 2),
+        "final_bag_volume_ml": round(bag_volume_ml, 2),
+        "warnings": warnings
     }

@@ -12,8 +12,8 @@ from services.propofol_service import calculate_propofol
 from services.pump_service import calculate_pump
 from services.ketamine_service import calculate_ketamine_reinforcement
 from services.lidocaine_service import evaluate_lidocaine_use
-from services.hospital_fluids_service import calculate_hospital_fluids
-from services.hospital_cri_service import calculate_hospital_cri
+from services.hospital_fluids_service import calculate_fluid_therapy
+from services.hospital_cri_service import build_cri
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'safeanesthesia-partenvet-secret-2026'
@@ -305,12 +305,17 @@ def api_calc_hospital_fluids():
     data = request.get_json()
     try:
         weight = float(data.get('weight', 0))
-        species = data.get('species')
         dehydration_pct = float(data.get('dehydration_pct', 0))
         losses_ml = float(data.get('losses_ml', 0))
         replacement_hours = float(data.get('replacement_hours', 24))
+        main_problem = data.get('main_problem', 'Otro')
+        renal_state = data.get('renal_state', 'Normal')
+        hepatic_state = data.get('hepatic_state', 'Normal')
         
-        results = calculate_hospital_fluids(weight, species, dehydration_pct, losses_ml, replacement_hours)
+        results = calculate_fluid_therapy(
+            weight, dehydration_pct, losses_ml,
+            main_problem, renal_state, hepatic_state, replacement_hours
+        )
         write_audit(current_user.id, 'hospital_fluids_calculated', {'patient': data.get('patient_name')})
         return jsonify(results)
     except Exception as e:
@@ -321,15 +326,12 @@ def api_calc_hospital_fluids():
 def api_calc_hospital_cri():
     data = request.get_json()
     try:
-        weight = float(data.get('weight', 0))
-        dose = float(data.get('dose', 0))
-        unit = data.get('unit')
-        concentration_mg_ml = float(data.get('concentration_mg_ml', 0))
-        final_volume_ml = float(data.get('final_volume_ml', 0))
-        duration_hours = float(data.get('duration_hours', 0))
+        drugs_input = data.get('drugs', [])
+        bag_volume_ml = float(data.get('bag_volume_ml', 0))
+        species = data.get('species', 'dog')
         
-        results = calculate_hospital_cri(weight, dose, unit, concentration_mg_ml, final_volume_ml, duration_hours)
-        write_audit(current_user.id, 'hospital_cri_calculated', {'drug': data.get('drug_name')})
+        results = build_cri(drugs_input, bag_volume_ml, species)
+        write_audit(current_user.id, 'hospital_cri_calculated', {'drugs': len(drugs_input)})
         return jsonify(results)
     except Exception as e:
         return jsonify({'error': str(e)}), 400

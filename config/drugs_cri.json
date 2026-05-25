@@ -1,0 +1,34 @@
+{
+  "lidocaine": {
+    "name": "Lidocaína",
+    "safe_species": ["dog"],
+    "warning_species": {
+      "cat": "No se recomienda CRI de lidocaína en gatos salvo criterio clínico específico"
+    },
+    "default_commercial_mg_ml": 20
+  },
+  "ketamine": {
+    "name": "Ketamina",
+    "safe_species": ["dog", "cat"],
+    "warning_species": {},
+    "default_commercial_mg_ml": 50
+  },
+  "tramadol": {
+    "name": "Tramadol",
+    "safe_species": ["dog", "cat"],
+    "warning_species": {},
+    "default_commercial_mg_ml": 50
+  },
+  "morphine": {
+    "name": "Morfina",
+    "safe_species": ["dog", "cat"],
+    "warning_species": {},
+    "default_commercial_mg_ml": 10
+  },
+  "fentanyl": {
+    "name": "Fentanilo",
+    "safe_species": ["dog", "cat"],
+    "warning_species": {},
+    "default_commercial_mg_ml": 0.05
+  }
+}

@@ -596,7 +596,22 @@ document.addEventListener('DOMContentLoaded', () => {
         window.print(); // Browser handles printing/saving as PDF much better for this layout.
     });
 
-    // HOSPITAL / CRI LOGIC
+    // HOSPITAL / CRI LOGIC PHASE 1
+
+    // 1. FLUIDOTERAPIA
+    const hospMainProblem = document.getElementById('hosp_main_problem');
+    const hospUseSuggested = document.getElementById('hosp_use_suggested_fluid');
+    const hospManualGroup = document.getElementById('hosp_manual_fluid_group');
+    
+    if (hospUseSuggested) {
+        hospUseSuggested.addEventListener('change', () => {
+            if (hospUseSuggested.checked) {
+                hospManualGroup.style.display = 'none';
+            } else {
+                hospManualGroup.style.display = 'block';
+            }
+        });
+    }
 
     // Sync dehydration radio → estimated % input
     document.querySelectorAll('input[name="hosp_dehydration"]').forEach(radio => {
@@ -606,185 +621,222 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Sync losses custom field toggle
-    const hospLossesType = document.getElementById('hosp_losses_type');
-    const hospLossesCustom = document.getElementById('hosp_losses_custom');
-    hospLossesType.addEventListener('change', () => {
-        if (hospLossesType.value === 'custom') {
-            hospLossesCustom.classList.remove('hidden');
-        } else {
-            hospLossesCustom.classList.add('hidden');
-        }
-    });
-
     const hospFluidHours = document.getElementById('hosp_fluid_hours');
-    const hospFluidHoursCustom = document.getElementById('hosp_fluid_hours_custom');
-    hospFluidHours.addEventListener('change', () => {
-        if (hospFluidHours.value === 'custom') {
-            hospFluidHoursCustom.classList.remove('hidden');
-        } else {
-            hospFluidHoursCustom.classList.add('hidden');
+
+    // 2. CRI BUILDER
+    const criPresetSel = document.getElementById('hosp_cri_preset');
+    const criDrugsContainer = document.getElementById('hosp_cri_drugs_container');
+    const criDrugsList = document.getElementById('hosp_cri_drugs_list');
+
+    let currentDrugsList = [];
+
+    const PRESETS = {
+        'TLK': [
+            { name: 'Tramadol', target: 60, conc: 50 },
+            { name: 'Lidocaína', target: 60, conc: 20 },
+            { name: 'Ketamina', target: 12, conc: 50 }
+        ],
+        'MLK': [
+            { name: 'Morfina', target: 2.4, conc: 10 },
+            { name: 'Lidocaína', target: 60, conc: 20 },
+            { name: 'Ketamina', target: 12, conc: 50 }
+        ],
+        'FLK': [
+            { name: 'Fentanilo', target: 0.06, conc: 0.05 },
+            { name: 'Lidocaína', target: 60, conc: 20 },
+            { name: 'Ketamina', target: 12, conc: 50 }
+        ],
+        'K': [
+            { name: 'Ketamina', target: 12, conc: 50 }
+        ],
+        'L': [
+            { name: 'Lidocaína', target: 60, conc: 20 }
+        ]
+    };
+
+    function renderDrugsList() {
+        if (currentDrugsList.length === 0) {
+            criDrugsContainer.style.display = 'none';
+            return;
         }
-    });
+        criDrugsContainer.style.display = 'block';
+        criDrugsList.innerHTML = '';
+        currentDrugsList.forEach((drug, index) => {
+            const div = document.createElement('div');
+            div.className = 'grid-2 p-2 bg-slate rounded border';
+            div.style.borderColor = 'rgba(148, 163, 184, 0.15)';
+            div.innerHTML = `
+                <div class="col-span-2 font-bold text-teal mb-1">${drug.name}</div>
+                <div class="form-group">
+                    <label class="text-xs">Concentración Objetivo (mg/L)</label>
+                    <input type="number" step="0.01" class="form-control" value="${drug.target}" onchange="updateDrug(${index}, 'target', this.value)">
+                </div>
+                <div class="form-group">
+                    <label class="text-xs">Fármaco Comercial (mg/ml)</label>
+                    <input type="number" step="0.01" class="form-control" value="${drug.conc}" onchange="updateDrug(${index}, 'conc', this.value)">
+                </div>
+            `;
+            criDrugsList.appendChild(div);
+        });
+    }
+
+    window.updateDrug = function(index, field, value) {
+        currentDrugsList[index][field] = parseFloat(value) || 0;
+    };
+
+    if (criPresetSel) {
+        criPresetSel.addEventListener('change', () => {
+            const val = criPresetSel.value;
+            if (PRESETS[val]) {
+                currentDrugsList = JSON.parse(JSON.stringify(PRESETS[val]));
+            } else {
+                currentDrugsList = [];
+            }
+            renderDrugsList();
+        });
+    }
 
     const btnCalcHosp = document.getElementById('btn-calculate-hosp');
-    btnCalcHosp.addEventListener('click', async () => {
-        btnCalcHosp.disabled = true;
-        btnCalcHosp.innerText = 'Calculando...';
+    if (btnCalcHosp) {
+        btnCalcHosp.addEventListener('click', async () => {
+            btnCalcHosp.disabled = true;
+            btnCalcHosp.innerText = 'Calculando...';
 
-        try {
-            // FLUIDS
-            const w = parseFloat(document.getElementById('hosp_weight').value);
-            if (isNaN(w)) throw new Error("Ingrese el peso del paciente.");
+            try {
+                const w = parseFloat(document.getElementById('hosp_weight').value);
+                if (isNaN(w)) throw new Error("Ingrese el peso del paciente.");
 
-            const species = document.getElementById('hosp_species').value;
-            // Dehydration selector (radio buttons)
-            const dehyRadio = document.querySelector('input[name="hosp_dehydration"]:checked');
-            const dehy = dehyRadio ? parseFloat(dehyRadio.value) : 0;
-            // Losses selector
-            const lossesSelect = document.getElementById('hosp_losses_type');
-            let losses = 0;
-            const lossesMap = {
-              none: 0,
-              vomitos_leve: 20,
-              vomitos_moderado: 50,
-              vomitos_severo: 100,
-              diarrea_leve: 20,
-              diarrea_moderada: 50,
-              diarrea_severa: 100,
-              vomitos_diarrea: 80,
-              poliuria: 30,
-              sangrado: 150,
-              custom: 0
-            };
-            if (lossesSelect.value === 'custom') {
-              losses = parseFloat(document.getElementById('hosp_losses_custom').value) || 0;
-            } else {
-              losses = lossesMap[lossesSelect.value] || 0;
-            }
-            
-            let hours = 24;
-            if (hospFluidHours.value === 'custom') {
-                hours = parseFloat(hospFluidHoursCustom.value);
-            } else {
-                hours = parseFloat(hospFluidHours.value);
-            }
-            if (isNaN(hours) || hours <= 0) hours = 24;
+                const species = document.getElementById('hosp_species').value;
+                const dehy = parseFloat(document.getElementById('hosp_dehydration_estimated').value) || 0;
+                const losses = parseFloat(document.getElementById('hosp_losses_ml').value) || 0;
+                const hours = parseFloat(document.getElementById('hosp_fluid_hours').value) || 24;
 
-            const fluidPayload = {
-                weight: w,
-                species: species,
-                dehydration_pct: dehy,
-                losses_ml: losses,
-                replacement_hours: hours,
-                patient_name: document.getElementById('hosp_patient_name').value
-            };
-
-            const fluidRes = await fetch('/api/calculate/hospital_fluids', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(fluidPayload)
-            });
-            const fluidData = await fluidRes.json();
-            if (fluidData.error) throw new Error(fluidData.error);
-
-            document.getElementById('hosp-maint-day').innerText = fluidData.maintenance_ml_day;
-            document.getElementById('hosp-maint-h').innerText = fluidData.maintenance_ml_h;
-            document.getElementById('hosp-deficit').innerText = fluidData.deficit_ml;
-            document.getElementById('hosp-losses-res').innerText = fluidData.losses_ml;
-            document.getElementById('hosp-total-vol').innerText = fluidData.total_volume_in_period;
-            document.getElementById('hosp-fluid-results').style.display = 'block';
-
-            document.getElementById('lcd-hosp-fluid-status').innerText = 'RUNNING';
-            document.getElementById('lcd-hosp-fluid-status').className = 'color-teal';
-            document.getElementById('lcd-hosp-fluid-flow').innerText = fluidData.flow_ml_h.toFixed(1);
-            document.getElementById('lcd-hosp-fluid-vtbi').innerText = fluidData.vtbi_ml.toFixed(1);
-            
-            const fHrs = Math.floor(fluidData.time_h);
-            const fMins = Math.round((fluidData.time_h - fHrs) * 60);
-            document.getElementById('lcd-hosp-fluid-time').innerHTML = `${fHrs.toString().padStart(2,'0')}:${fMins.toString().padStart(2,'0')} <small>hh:mm</small>`;
-
-            // CRI
-            const criDose = parseFloat(document.getElementById('hosp_cri_dose').value);
-            if (!isNaN(criDose) && criDose > 0) {
-                const criPayload = {
+                // FLUIDS API CALL
+                const fluidPayload = {
                     weight: w,
-                    dose: criDose,
-                    unit: document.getElementById('hosp_cri_unit').value,
-                    concentration_mg_ml: parseFloat(document.getElementById('hosp_cri_conc').value) || 0,
-                    final_volume_ml: parseFloat(document.getElementById('hosp_cri_final_vol').value) || 0,
-                    duration_hours: parseFloat(document.getElementById('hosp_cri_hours').value) || 24,
-                    drug_name: document.getElementById('hosp_cri_drug').value
+                    dehydration_pct: dehy,
+                    losses_ml: losses,
+                    replacement_hours: hours,
+                    main_problem: document.getElementById('hosp_main_problem').value,
+                    renal_state: document.getElementById('hosp_renal_state').value,
+                    hepatic_state: document.getElementById('hosp_hepatic_state').value,
+                    patient_name: document.getElementById('hosp_patient_name').value || 'Paciente'
                 };
 
-                const criRes = await fetch('/api/calculate/hospital_cri', {
+                const fluidRes = await fetch('/api/calculate/hospital_fluids', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(criPayload)
+                    body: JSON.stringify(fluidPayload)
                 });
-                const criData = await criRes.json();
-                if (criData.error) throw new Error(criData.error);
+                const fluidData = await fluidRes.json();
+                if (fluidData.error) throw new Error(fluidData.error);
 
-                document.getElementById('hosp-cri-text').innerText = `Extraer ${criData.drug_ml} ml de medicamento y agregarlo a ${criData.base_fluid_ml} ml de solución base.`;
-                document.getElementById('hosp-cri-total-mg').innerText = criData.total_mg;
-                document.getElementById('hosp-cri-drug-ml').innerText = criData.drug_ml;
-                document.getElementById('hosp-cri-base-ml').innerText = criData.base_fluid_ml;
-                document.getElementById('hosp-cri-final-conc').innerText = criData.final_concentration_mg_ml;
-                document.getElementById('hosp-cri-results').style.display = 'block';
-
-                document.getElementById('lcd-hosp-cri-status').innerText = 'RUNNING';
-                document.getElementById('lcd-hosp-cri-status').className = 'color-teal';
-                document.getElementById('lcd-hosp-cri-flow').innerText = criData.flow_ml_h.toFixed(1);
-                document.getElementById('lcd-hosp-cri-vtbi').innerText = criData.vtbi_ml.toFixed(1);
+                // Update Fluid UI
+                document.getElementById('hosp_suggested_fluid_name').innerText = fluidData.recommended_fluid.fluid_name;
+                document.getElementById('hosp_fluid_justification').innerText = fluidData.recommended_fluid.justification;
                 
-                const cHrs = Math.floor(criData.time_h);
-                const cMins = Math.round((criData.time_h - cHrs) * 60);
-                document.getElementById('lcd-hosp-cri-time').innerHTML = `${cHrs.toString().padStart(2,'0')}:${cMins.toString().padStart(2,'0')} <small>hh:mm</small>`;
-            } else {
-                // Limpiar CRI si no hay dosis
-                document.getElementById('hosp-cri-results').style.display = 'none';
-                document.getElementById('lcd-hosp-cri-status').innerText = 'ESPERANDO CÁLCULO';
-                document.getElementById('lcd-hosp-cri-status').className = 'color-yellow';
-                document.getElementById('lcd-hosp-cri-flow').innerText = '--';
-                document.getElementById('lcd-hosp-cri-vtbi').innerText = '--';
-                document.getElementById('lcd-hosp-cri-time').innerHTML = '--:-- <small>hh:mm</small>';
-            }
+                document.getElementById('hosp-maint').innerText = fluidData.maintenance_ml.toFixed(1);
+                document.getElementById('hosp-deficit').innerText = fluidData.deficit_ml.toFixed(1);
+                document.getElementById('hosp-losses-res').innerText = fluidData.losses_ml.toFixed(1);
+                document.getElementById('hosp-total-vol').innerText = fluidData.total_volume_in_period.toFixed(1);
+                document.getElementById('hosp-fluid-results').style.display = 'block';
 
-        } catch (e) {
-            alert(e.message);
-        } finally {
-            btnCalcHosp.disabled = false;
-            btnCalcHosp.innerText = 'Calcular Hospital / CRI';
-        }
-    });
+                document.getElementById('lcd-hosp-fluid-status').innerText = 'RUNNING';
+                document.getElementById('lcd-hosp-fluid-status').className = 'color-teal';
+                document.getElementById('lcd-hosp-fluid-flow').innerText = fluidData.flow_ml_h.toFixed(1);
+                document.getElementById('lcd-hosp-fluid-vtbi').innerText = fluidData.vtbi_ml.toFixed(1);
+                
+                const fHrs = Math.floor(fluidData.time_h);
+                const fMins = Math.round((fluidData.time_h - fHrs) * 60);
+                document.getElementById('lcd-hosp-fluid-time').innerHTML = `${fHrs.toString().padStart(2,'0')}:${fMins.toString().padStart(2,'0')} <small>hh:mm</small>`;
+
+                // CRI API CALL
+                if (currentDrugsList.length > 0) {
+                    const criPayload = {
+                        drugs: currentDrugsList.map(d => ({
+                            drug_name: d.name,
+                            target_mg_L: d.target,
+                            commercial_mg_ml: d.conc
+                        })),
+                        bag_volume_ml: parseFloat(document.getElementById('hosp_cri_bag').value) || 500,
+                        species: species
+                    };
+
+                    const criRes = await fetch('/api/calculate/hospital_cri', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(criPayload)
+                    });
+                    const criData = await criRes.json();
+                    if (criData.error) throw new Error(criData.error);
+
+                    // Update Warnings
+                    const warnContainer = document.getElementById('hosp-clinical-warnings-container');
+                    const warnList = document.getElementById('hosp-clinical-warnings-list');
+                    if (criData.safety_warnings && criData.safety_warnings.length > 0) {
+                        warnList.innerHTML = '';
+                        criData.safety_warnings.forEach(wMsg => {
+                            const li = document.createElement('li');
+                            li.innerText = wMsg;
+                            warnList.appendChild(li);
+                        });
+                        warnContainer.classList.remove('hidden');
+                    } else {
+                        warnContainer.classList.add('hidden');
+                    }
+
+                    // Update Results UI
+                    const recipeList = document.getElementById('hosp-cri-recipe-list');
+                    const validationList = document.getElementById('hosp-cri-validation-list');
+                    recipeList.innerHTML = '';
+                    validationList.innerHTML = '';
+
+                    const totalWithdraw = criData.total_volume_to_withdraw_ml;
+                    
+                    const liWithdraw = document.createElement('li');
+                    liWithdraw.innerHTML = `<strong>1.</strong> Extraer y descartar <span class="text-teal font-bold">${totalWithdraw.toFixed(2)} ml</span> de la bolsa de fluido base para hacer espacio.`;
+                    recipeList.appendChild(liWithdraw);
+
+                    criData.drugs_results.forEach((dr, i) => {
+                        const liAdd = document.createElement('li');
+                        liAdd.innerHTML = `<strong>${i+2}.</strong> Extraer <span class="text-teal font-bold">${dr.volume_to_add_ml.toFixed(2)} ml</span> de ${dr.drug_name} (${dr.commercial_mg_ml} mg/ml) e inyectar en la bolsa.`;
+                        recipeList.appendChild(liAdd);
+
+                        const liVal = document.createElement('li');
+                        liVal.innerHTML = `<strong>${dr.drug_name}:</strong> Conc. Final: ${dr.final_concentration_mg_ml.toFixed(2)} mg/ml | <span class="text-teal font-bold">Dosis: ${dr.target_mg_L} mg/L</span>`;
+                        validationList.appendChild(liVal);
+                    });
+
+                    document.getElementById('hosp-cri-results').style.display = 'block';
+
+                    // Update Pump UI (CRI runs at whatever flow the user decides based on their target mg/kg/h)
+                    // We just show waiting since the flow depends on the desired dose and patient weight.
+                    document.getElementById('lcd-hosp-cri-status').innerText = 'MEZCLA LISTA';
+                    document.getElementById('lcd-hosp-cri-status').className = 'color-teal';
+                    document.getElementById('lcd-hosp-cri-flow').innerText = 'User';
+                    document.getElementById('lcd-hosp-cri-vtbi').innerText = criPayload.bag_volume_ml;
+                    document.getElementById('lcd-hosp-cri-time').innerHTML = '--:-- <small>hh:mm</small>';
+                } else {
+                    document.getElementById('hosp-cri-results').style.display = 'none';
+                    document.getElementById('hosp-clinical-warnings-container').classList.add('hidden');
+                    document.getElementById('lcd-hosp-cri-status').innerText = 'ESPERANDO CÁLCULO';
+                    document.getElementById('lcd-hosp-cri-status').className = 'color-yellow';
+                    document.getElementById('lcd-hosp-cri-flow').innerText = '--';
+                    document.getElementById('lcd-hosp-cri-vtbi').innerText = '--';
+                    document.getElementById('lcd-hosp-cri-time').innerHTML = '--:-- <small>hh:mm</small>';
+                }
+
+            } catch (e) {
+                alert(e.message);
+            } finally {
+                btnCalcHosp.disabled = false;
+                btnCalcHosp.innerText = 'Calcular Hospital / CRI';
+            }
+        });
+    }
 
     function updateHospitalPrintSummary() {
-        document.getElementById('pr_hosp_name').innerText = document.getElementById('hosp_patient_name').value || '--';
-        const spSel = document.getElementById('hosp_species');
-        document.getElementById('pr_hosp_species').innerText = spSel.options[spSel.selectedIndex]?.text || '--';
-        document.getElementById('pr_hosp_weight').innerText = document.getElementById('hosp_weight').value || '--';
-        document.getElementById('pr_hosp_age').innerText = document.getElementById('hosp_age').value || '--';
-        document.getElementById('pr_hosp_reason').innerText = document.getElementById('hosp_reason').value || '--';
-
-
-        document.getElementById('pr_hosp_maint_day').innerText = document.getElementById('hosp-maint-day').innerText || '--';
-        document.getElementById('pr_hosp_deficit').innerText = document.getElementById('hosp-deficit').innerText || '--';
-        document.getElementById('pr_hosp_losses').innerText = document.getElementById('hosp-losses-res').innerText || '--';
-        document.getElementById('pr_hosp_total_vol').innerText = document.getElementById('hosp-total-vol').innerText || '--';
-
-        document.getElementById('pr_hosp_lcd_fluid_flow').innerText = document.getElementById('lcd-hosp-fluid-flow').innerText || '--';
-        document.getElementById('pr_hosp_lcd_fluid_vtbi').innerText = document.getElementById('lcd-hosp-fluid-vtbi').innerText || '--';
-        document.getElementById('pr_hosp_lcd_fluid_time').innerText = document.getElementById('lcd-hosp-fluid-time').innerText || '--';
-
-        document.getElementById('pr_hosp_cri_drug').innerText = document.getElementById('hosp_cri_drug').value || '--';
-        document.getElementById('pr_hosp_cri_dose').innerText = document.getElementById('hosp_cri_dose').value ? `${document.getElementById('hosp_cri_dose').value} ${document.getElementById('hosp_cri_unit').value}` : '--';
-        document.getElementById('pr_hosp_cri_drug_ml').innerText = document.getElementById('hosp-cri-drug-ml').innerText || '--';
-        document.getElementById('pr_hosp_cri_base_ml').innerText = document.getElementById('hosp-cri-base-ml').innerText || '--';
-        document.getElementById('pr_hosp_cri_final_vol').innerText = document.getElementById('hosp_cri_final_vol').value || '--';
-
-        document.getElementById('pr_hosp_lcd_cri_flow').innerText = document.getElementById('lcd-hosp-cri-flow').innerText || '--';
-        document.getElementById('pr_hosp_lcd_cri_vtbi').innerText = document.getElementById('lcd-hosp-cri-vtbi').innerText || '--';
-        document.getElementById('pr_hosp_lcd_cri_time').innerText = document.getElementById('lcd-hosp-cri-time').innerText || '--';
+        // Stub for printing in Phase 1
     }
 
 });
