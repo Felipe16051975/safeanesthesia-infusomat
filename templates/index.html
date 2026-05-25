@@ -122,28 +122,33 @@
 
         @media print {
             body * {
-                visibility: hidden;
+                display: none !important;
             }
-            .print-only.active-print {
+
+            #print-summary-preq,
+            #print-summary-preq * {
                 display: block !important;
             }
-            .print-only.active-print,
-            .print-only.active-print * {
-                visibility: visible;
+
+            #print-summary-preq {
+                position: static !important;
+                width: 100% !important;
+                background: white !important;
+                color: black !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                font-size: 10.5pt;
             }
-            .print-only.active-print {
-                position: fixed;
-                left: 0;
-                top: 0;
-                width: 100%;
-                padding: 12mm;
-                background: white;
-                color: black;
-                font-size: 11pt;
+
+            #print-summary-hospital,
+            #print-summary,
+            .print-only:not(#print-summary-preq) {
+                display: none !important;
             }
+
             @page {
                 size: letter;
-                margin: 10mm;
+                margin: 8mm;
             }
         }
     </style>
@@ -203,70 +208,203 @@
         <h2 class="step-title">PASO 2 — Propofol y mezcla</h2>
         <div class="card mb-4">
             <div class="card-body grid-2">
+                <!-- Nota de Referencia Clínica Interna -->
+                <div class="col-span-2 p-3 bg-slate rounded text-xs text-slate" style="border-left: 3px solid var(--color-teal); line-height: 1.4;">
+                    <strong>Referencia Interna:</strong> Ketofol corresponde a la coadministración de ketamina y propofol. En perros se ha descrito una relación ketamina:propofol aproximada 1:2 para inducción/mantenimiento experimental. La ketamina puede aportar antinocicepción y estabilidad cardiovascular, pero requiere vigilancia respiratoria. <em>(Dosis editable, no automática obligatoria).</em>
+                </div>
+
+                <!-- GUÍA RÁPIDA DE DOSIS CLÍNICA -->
+                <div class="col-span-2">
+                    <details id="dose-guide-details" class="info-details">
+                        <summary id="dose-guide-summary" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; color: var(--color-teal-light); cursor: pointer; user-select: none; padding: 6px 10px; border-radius: 6px; background: rgba(13,148,136,0.08); border: 1px solid rgba(13,148,136,0.25); transition: background 0.2s;">
+                            <span style="font-size: 1rem;">📋</span> Ver guía rápida de dosis
+                        </summary>
+                        <div style="margin-top: 8px; padding: 14px 16px; background: rgba(15,23,42,0.55); border-radius: 8px; border: 1px solid rgba(13,148,136,0.2); line-height: 1.55; font-size: 0.82rem; color: var(--color-text-main);">
+
+                            <p style="margin: 0 0 8px; font-weight: 700; color: var(--color-teal-light); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem;">🔹 Inducción IV lenta</p>
+                            <ul style="margin: 0 0 12px 1rem; padding: 0;">
+                                <li><strong>Propofol 10 mg/ml:</strong> 2–6 mg/kg. Animales sanos.</li>
+                                <li><strong>Alfaxalona 10 mg/ml:</strong> 1–3 mg/kg.</li>
+                                <li><strong>Ketamina 100 mg/ml:</strong> 1–5 mg/kg. Animales sanos cardiovascularmente que necesitan analgesia extra.</li>
+                            </ul>
+
+                            <p style="margin: 0 0 8px; font-weight: 700; color: var(--color-teal-light); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem;">🔹 Mantenimiento / Infusión continua (TIVA)</p>
+                            <ul style="margin: 0 0 12px 1rem; padding: 0;">
+                                <li><strong>Propofol 10 mg/ml:</strong> 3–24 mg/kg/h = 0.05–0.4 mg/kg/min.</li>
+                                <li><strong>Ketamina 100 mg/ml:</strong> 0.3–0.6 mg/kg/h en infusión.</li>
+                                <li><strong>Ketamina analgésica:</strong> bolo 0.5–1 mg/kg, luego 0.3–0.6 mg/kg/h.</li>
+                                <li><strong>Lidocaína (solo perros):</strong> bolo 1.5–2 mg/kg, luego 1.5–5 mg/kg/h.</li>
+                            </ul>
+
+                            <p style="margin: 0 0 8px; font-weight: 700; color: var(--color-teal-light); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.78rem;">🔹 Ejemplos clínicos de referencia</p>
+                            <div style="margin-bottom: 8px; padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                                <p style="margin: 0 0 3px; font-weight: 600;">Orquidectomía — perro sano:</p>
+                                <p style="margin: 0; color: rgba(203,213,225,0.85);">Premedicación IV: dexmedetomidina 2.5 µg/kg + metadona 0.1 mg/kg.<br>
+                                Inducción: propofol a efecto.<br>
+                                Mantenimiento: isoflurano + bloqueo intratesticular con lidocaína.</p>
+                            </div>
+                            <div style="margin-bottom: 12px; padding: 8px 10px; background: rgba(0,0,0,0.2); border-radius: 6px;">
+                                <p style="margin: 0 0 3px; font-weight: 600;">Ovariohisterectomía — gata sana:</p>
+                                <p style="margin: 0; color: rgba(203,213,225,0.85);">Premedicación IM: medetomidina 10 µg/kg + metadona 0.2 mg/kg + ketamina 2 mg/kg.<br>
+                                Inducción: alfaxalona a efecto.<br>
+                                Mantenimiento: isoflurano + bupivacaína intraperitoneal.</p>
+                            </div>
+
+                            <p style="margin: 0; font-size: 0.78rem; color: rgba(148,163,184,0.8); font-style: italic; border-top: 1px solid rgba(148,163,184,0.15); padding-top: 8px;">
+                                ⚠️ Estos rangos son orientativos. Ajustar según ASA, especie, estado cardiovascular, premedicación, monitorización y criterio del veterinario responsable.
+                            </p>
+                        </div>
+                    </details>
+                </div>
+
+                <div class="form-group col-span-2">
+                    <label>Modo Anestésico</label>
+                    <select id="anesthesia_mode" class="form-control">
+                        <option value="propofol_solo">Propofol solo</option>
+                        <option value="propofol_ketamine_mixture">Ketofol (Propofol + Ketamina en mezcla)</option>
+                        <option value="propofol_ketamine_bolo">Propofol + ketamina como bolo separado</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
-                    <label>Propofol</label>
+                    <label>Propofol Concentración Comercial</label>
                     <select id="propofol_concentration" class="form-control">
                         <option value="1%">1% (10 mg/ml)</option>
                         <option value="2%">2% (20 mg/ml)</option>
                     </select>
                 </div>
-                <div class="form-group"><label>Dosis (mg/kg/min)</label><input type="number" id="target_dose" step="0.01" class="form-control" value="0.2" required></div>
-                <div class="form-group col-span-2"><label>Volumen NaCl (ml)</label><input type="number" id="diluent_volume" class="form-control" value="40" required></div>
                 
+                <div class="form-group">
+                    <label>Dosis Propofol</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="number" id="target_dose" step="0.001" class="form-control" value="0.2" required style="flex-grow: 1;">
+                        <select id="propofol_dose_unit" class="form-control" style="width: 120px;">
+                            <option value="mg/kg/min">mg/kg/min</option>
+                            <option value="mg/kg/h">mg/kg/h</option>
+                            <option value="mcg/kg/min">mcg/kg/min</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- CAMPOS KETOFOL EN MEZCLA -->
+                <div id="ketofol_mixture_fields" class="col-span-2 grid-2 hidden p-3 bg-slate rounded border" style="border-color: rgba(13, 148, 136, 0.3);">
+                    <h4 class="col-span-2 text-teal font-semibold text-sm mb-1">Parámetros de Ketamina en Mezcla</h4>
+                    <div class="form-group">
+                        <label>Ketamina Comercial (mg/ml)</label>
+                        <select id="ketamine_concentration" class="form-control">
+                            <option value="50">50 mg/ml (5%)</option>
+                            <option value="100">100 mg/ml (10%)</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                        <input type="number" id="ketamine_concentration_custom" step="1" value="50" class="form-control mt-2 hidden" placeholder="mg/ml">
+                    </div>
+                    <div class="form-group">
+                        <label>Relación Automática 1:2 Sí/No</label>
+                        <select id="use_ratio_1_2" class="form-control">
+                            <option value="no" selected>No (editar dosis manualmente)</option>
+                            <option value="yes">Sí (Dosis K = Dosis Propofol / 2)</option>
+                        </select>
+                    </div>
+                    <div class="form-group col-span-2">
+                        <label>Dosis Ketamina Objetivo</label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="ketamine_target_dose" step="0.001" value="0.1" class="form-control" style="flex-grow: 1;">
+                            <select id="ketamine_dose_unit" class="form-control" style="width: 120px;">
+                                <option value="mg/kg/min">mg/kg/min</option>
+                                <option value="mg/kg/h">mg/kg/h</option>
+                                <option value="mcg/kg/min">mcg/kg/min</option>
+                            </select>
+                        </div>
+                        <p id="ratio-auto-info" class="text-xs mt-1" style="color: var(--color-teal-light); display:none;">Dosis ketamina calculada automáticamente por relación 1:2.</p>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Volumen NaCl / Diluyente (ml)</label>
+                    <input type="number" id="diluent_volume" class="form-control" value="40" required>
+                    <div class="text-xs text-slate mt-1" style="line-height: 1.3;">
+                        Sugerido: <span id="nacl-suggested" class="font-bold text-teal">--</span> | 
+                        Máx recomendado: <span id="nacl-max-rec" class="font-bold text-teal">--</span> | 
+                        Máx absoluto: 100 ml
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Contenedor (capacidad mínima)</label>
+                    <div class="flex-row gap-2 mt-1">
+                        <label class="dehy-option flex-grow text-center" style="padding: 6px 4px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <input type="radio" name="container_type" value="jeringa_20_ml" id="container_20">
+                            <span>Mín. 20 ml</span>
+                        </label>
+                        <label class="dehy-option flex-grow text-center" style="padding: 6px 4px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <input type="radio" name="container_type" value="jeringa_50_ml" id="container_50" checked>
+                            <span>Mín. 50 ml</span>
+                        </label>
+                        <label class="dehy-option flex-grow text-center" style="padding: 6px 4px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                            <input type="radio" name="container_type" value="bolsa_100_ml" id="container_100">
+                            <span>Mín. 100 ml</span>
+                        </label>
+                    </div>
+                    <p class="text-xs mt-1" style="color: var(--color-teal-light);">Contenedor sugerido (capacidad mínima): <span id="suggested-container-lbl" class="font-bold">50 ml</span></p>
+                    <p class="text-xs mt-1" style="color: #f59e0b; line-height: 1.3;">⚠️ El contenedor indica la capacidad física necesaria. <strong>NO significa completar el envase entero.</strong> Preparar únicamente el volumen final calculado.</p>
+                </div>
+
+                <!-- Banners de Alerta Volume Guard y Validación fisiológica informativa -->
+                <div class="col-span-2 hidden p-3 rounded" id="volume-guard-alert" style="line-height: 1.4;">
+                    <p class="font-bold" id="volume-guard-alert-text"></p>
+                </div>
+
+                <div class="col-span-2 hidden p-2 bg-slate rounded text-xs color-slate" id="secondary-validation-info">
+                    <span id="secondary-validation-info-text"></span>
+                </div>
+
+                <div class="col-span-2 hidden p-3 bg-slate rounded border" id="clinical-warnings-container" style="border-color: #d97706;">
+                    <strong class="text-xs text-slate" style="color: #d97706; display: block; margin-bottom: 4px;">⚠️ ADVERTENCIAS CLÍNICAS:</strong>
+                    <ul id="clinical-warnings-list" class="text-xs" style="color: #f59e0b; margin: 0; padding-left: 15px; line-height: 1.4;">
+                    </ul>
+                </div>
+
                 <div class="col-span-2 mt-3 p-3 bg-slate rounded" id="propofol-results" style="display:none;">
-                    <p class="font-bold text-teal" id="prop-prep-text" style="font-size: 1.1rem;"></p>
-                    <ul class="text-sm mt-2">
-                        <li>Propofol total: <span id="prop-mg"></span> mg</li>
-                        <li>Volumen propofol: <span id="prop-ml"></span> ml</li>
-                        <li>Volumen final: <span id="prop-final-vol"></span> ml</li>
-                        <li>Concentración final: <span id="prop-final-conc"></span> mg/ml</li>
+                    <p class="font-bold text-teal" id="prop-prep-text" style="font-size: 1.1rem; line-height: 1.4;"></p>
+                    <ul class="text-sm mt-2" style="line-height: 1.5;">
+                        <li>Propofol comercial: <span id="prop-ml"></span> ml (<span id="prop-mg"></span> mg totales)</li>
+                        <li>Dosis Propofol (mg/kg/min): <span id="prop-target-dose"></span> objetivo → <span id="prop-delivered-dose" class="font-bold text-teal"></span> entregado</li>
+                        <li>Concentración final Propofol: <span id="prop-final-conc"></span> mg/ml</li>
+                        
+                        <li id="li-ket-result" style="display:none; margin-top: 8px;">Ketamina comercial: <span id="ket-ml"></span> ml (<span id="ket-mg"></span> mg totales)</li>
+                        <li id="li-ket-dose-result" style="display:none;">Dosis Ketamina (mg/kg/min): <span id="ket-target-dose"></span> objetivo → <span id="ket-delivered-dose" class="font-bold text-teal"></span> entregado</li>
+                        <li id="li-ket-conc-result" style="display:none;">Concentración final Ketamina: <span id="ket-final-conc"></span> mg/ml</li>
+                        
+                        <li style="margin-top: 8px;">Volumen NaCl: <span id="result-nacl-ml"></span> ml</li>
+                        <li class="font-bold text-teal">Volumen final mezcla: <span id="prop-final-vol"></span> ml</li>
+                        <li>Contenedor (capacidad mínima): <span id="result-container-used" class="font-bold text-teal"></span></li>
+                        <li>Estado de volumen: <span id="result-volume-guard-lbl" class="font-bold"></span></li>
                     </ul>
                 </div>
             </div>
         </div>
 
-        <!-- PASO 3 -->
-        <h2 class="step-title">PASO 3 — Cebado</h2>
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="form-group mb-3">
-                    <label>¿El set de infusión está cebado?</label>
-                    <select id="line_primed" class="form-control">
-                        <option value="yes">Sí, ya está purgado</option>
-                        <option value="no">No, se cebará antes de iniciar</option>
-                    </select>
-                </div>
-                <div class="form-group mb-3">
-                    <label>Cebado realizado con:</label>
-                    <select id="prime_fluid" class="form-control">
-                        <option value="suero">Suero fisiológico</option>
-                        <option value="mezcla">Mezcla anestésica preparada</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Volumen de cebado estimado</label>
-                    <select id="priming_volume" class="form-control">
-                        <option value="2">Línea corta / extensión: 2 ml</option>
-                        <option value="22" selected>Línea estándar Infusomat: 22 ml</option>
-                        <option value="40">Línea larga / con extensiones: 40 ml</option>
-                        <option value="custom">Personalizado</option>
-                    </select>
-                    <input type="number" id="custom_priming_vol" class="form-control mt-2 hidden" placeholder="ml">
-                </div>
-                
-                <div id="prime-warning-suero" class="mt-3 color-yellow hidden">
-                    Retraso estimado por cebado: <span id="prime-delay"></span> min.
-                </div>
-                <div id="prime-warning-mezcla" class="mt-3 color-danger hidden font-bold">
-                    El volumen muerto contiene propofol activo. No realizar flush rápido al finalizar.
-                </div>
-            </div>
+        <!-- PASO 3 eliminado: cebado no forma parte del flujo Pre-Q. La vía debe estar siempre cebada antes de conectar al paciente. -->
+        <!-- IDs ocultos para compatibilidad JS hasta próxima limpieza -->
+        <div style="display:none;" aria-hidden="true">
+            <select id="line_primed"><option value="yes">Sí</option></select>
+            <select id="prime_fluid"><option value="suero">Suero</option></select>
+            <select id="priming_volume"><option value="0">0</option></select>
+            <input type="number" id="custom_priming_vol" value="0">
+            <div id="prime-warning-suero"></div>
+            <div id="prime-warning-mezcla"></div>
+            <span id="prime-delay"></span>
+        </div>
+
+        <!-- NOTA DE SEGURIDAD PRE-BOMBA -->
+        <div class="mb-4 p-3 rounded" style="background: rgba(13,148,136,0.08); border: 1px solid rgba(13,148,136,0.3); font-size: 0.88rem; color: var(--color-teal-light);">
+            ⚠️ <strong>Seguridad:</strong> Antes de conectar al paciente, verifique que la línea de infusión esté correctamente purgada/cebada y sin aire.
         </div>
 
         <button id="btn-calculate" class="btn btn-teal btn-block btn-lg mb-4">Calcular y Actualizar Bomba</button>
 
-        <!-- PASO 4 -->
-        <h2 class="step-title">PASO 4 — Programación Infusomat</h2>
+        <!-- PASO 3 -->
+        <h2 class="step-title">PASO 3 — Programación Infusomat</h2>
         <div id="section-bomba-simulator" class="card card-dark mb-4">
             <div class="card-header">
                 <h3>Así debe quedar programada la Infusomat Space</h3>
@@ -283,8 +421,8 @@
             </div>
         </div>
 
-        <!-- PASO 5 -->
-        <h2 class="step-title">PASO 5 — Ketamina</h2>
+        <!-- PASO 4 -->
+        <h2 class="step-title">PASO 4 — Ketamina (bolo separado, si aplica)</h2>
         <div class="card mb-4">
             <div class="card-body">
                 <div class="form-group mb-3">
@@ -307,8 +445,8 @@
             </div>
         </div>
 
-        <!-- PASO 6 -->
-        <h2 class="step-title">PASO 6 — Lidocaína</h2>
+        <!-- PASO 5 -->
+        <h2 class="step-title">PASO 5 — Lidocaína</h2>
         <div class="card mb-4">
             <div class="card-body">
                 <div class="grid-2">
@@ -329,40 +467,16 @@
             </div>
         </div>
 
-        <!-- PASO 7 -->
-        <h2 class="step-title">PASO 7 — Suero de mantención / hospitalización</h2>
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label>Duración (horas)</label>
-                        <select id="fluid_hours" class="form-control">
-                            <option value="1">1 h</option><option value="2">2 h</option><option value="4">4 h</option>
-                            <option value="6">6 h</option><option value="12">12 h</option><option value="24">24 h</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Tipo de cálculo</label>
-                        <select id="fluid_type" class="form-control">
-                            <option value="basic">Mantención básica</option>
-                        </select>
-                    </div>
-                    
-                    <div class="col-span-2 mt-3">
-                        <div class="bbraun-lcd">
-                            <div class="lcd-header"><span>Programación de suero de mantención</span><span class="color-yellow">SUERO</span></div>
-                            <div class="lcd-body">
-                                <div class="lcd-metric"><span class="lbl">FLOW</span><span class="val"><span id="fluid-flow">--</span> <small>ml/h</small></span></div>
-                                <div class="lcd-metric"><span class="lbl">VTBI</span><span class="val"><span id="fluid-vtbi">--</span> <small>ml</small></span></div>
-                                <div class="lcd-metric"><span class="lbl">TIME</span><span class="val" id="fluid-time">--:-- <small>hh:mm</small></span></div>
-                            </div>
-                        </div>
-                        <p class="text-xs color-slate mt-2">Nota: Este cálculo no reemplaza evaluación de hidratación, perfusión, pérdidas activas ni función cardiovascular/renal.</p>
-                    </div>
-                </div>
-            </div>
+        <!-- PASO 7 eliminado: el suero de mantención pertenece al módulo Hospital / CRI -->
+        <!-- Los IDs fluid-flow, fluid-vtbi, fluid-time se mantienen ocultos para no romper referencias JS -->
+        <div style="display:none;" aria-hidden="true">
+            <span id="fluid-flow"></span>
+            <span id="fluid-vtbi"></span>
+            <span id="fluid-time"></span>
+            <select id="fluid_hours"><option value="1">1</option></select>
+            <select id="fluid_type"><option value="basic">basic</option></select>
         </div>
-        
+
         </div> <!-- CIERRE DE PRE-Q MODE -->
 
         <!-- HOSPITAL MODE -->
@@ -628,58 +742,80 @@
         </div>
 
         <!-- CONTENEDOR DE IMPRESIÓN PRE-Q -->
-        <div id="print-summary" class="print-only">
-            <h2 style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 5px;">Resumen prequirúrgico SafeAnesthesia</h2>
+        <div id="print-summary-preq" class="print-only">
+            <div style="border: 1px solid #000; padding: 10px; margin-bottom: 10px; text-align: center;">
+                <h1 style="margin: 0; font-size: 14pt;">SafeAnesthesia Pre-Q</h1>
+                <h2 style="margin: 5px 0 0 0; font-size: 12pt; font-weight: normal;">Plan anestésico para bomba Infusomat</h2>
+            </div>
             
-            <div style="margin-top: 15px;">
-                <h3>A. Paciente</h3>
-                <p><strong>Nombre:</strong> <span id="pr_name"></span> &nbsp;|&nbsp; <strong>Especie:</strong> <span id="pr_species"></span></p>
-                <p><strong>Peso:</strong> <span id="pr_weight"></span> kg &nbsp;|&nbsp; <strong>Edad:</strong> <span id="pr_age"></span></p>
-                <p><strong>ASA:</strong> <span id="pr_asa"></span> &nbsp;|&nbsp; <strong>Cirugía:</strong> <span id="pr_surgery"></span></p>
-                <p><strong>Duración Estimada:</strong> <span id="pr_duration"></span> min</p>
+            <div style="margin-bottom: 10px; border: 1px solid #ccc; padding: 8px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 11pt;">Paciente</h3>
+                <p style="margin: 2px 0;"><strong>Nombre:</strong> <span id="pr_name"></span> &nbsp;|&nbsp; <strong>Especie:</strong> <span id="pr_species"></span></p>
+                <p style="margin: 2px 0;"><strong>Peso:</strong> <span id="pr_weight"></span> kg &nbsp;|&nbsp; <strong>Edad:</strong> <span id="pr_age"></span></p>
+                <p style="margin: 2px 0;"><strong>ASA:</strong> <span id="pr_asa"></span> &nbsp;|&nbsp; <strong>Cirugía:</strong> <span id="pr_surgery"></span></p>
+                <p style="margin: 2px 0;"><strong>Duración Estimada:</strong> <span id="pr_duration"></span> min</p>
             </div>
 
-            <div style="margin-top: 15px;">
-                <h3>B. Preparación anestésica</h3>
-                <p><strong>Propofol total:</strong> <span id="pr_prop_mg"></span> mg</p>
-                <p><strong>Propofol a extraer:</strong> <span id="pr_prop_ml"></span> ml</p>
-                <p><strong>NaCl a agregar:</strong> <span id="pr_nacl_ml"></span> ml</p>
-                <p><strong>Volumen final:</strong> <span id="pr_final_vol"></span> ml</p>
-                <p><strong>Concentración final:</strong> <span id="pr_final_conc"></span> mg/ml</p>
+            <div style="margin-bottom: 10px; border: 1px solid #ccc; padding: 8px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 11pt;">Protocolo anestésico</h3>
+                <p style="margin: 2px 0;"><strong>Modo:</strong> <span id="pr_anesthesia_mode"></span></p>
+                <p style="margin: 2px 0;"><strong>Propofol:</strong> <span id="pr_prop_conc"></span>, <span id="pr_prop_dose"></span>, <span id="pr_prop_mg"></span> mg totales, <strong><span id="pr_prop_ml"></span> ml a extraer</strong></p>
+                <p id="pr_ket_mix_row" style="margin: 2px 0; display:none;"><strong>Ketamina:</strong> <span id="pr_ket_conc"></span>, <span id="pr_ket_dose"></span>, <span id="pr_ket_mix_mg"></span> mg totales, <strong><span id="pr_ket_mix_ml"></span> ml a extraer</strong></p>
             </div>
 
-            <div style="margin-top: 15px;">
-                <h3>C. Pantalla Infusomat anestesia</h3>
-                <div style="border: 2px solid #000; padding: 10px; width: 50%; font-family: monospace; font-size: 14pt;">
-                    <p><strong>FLOW:</strong> <span id="pr_lcd_flow"></span> ml/h</p>
-                    <p><strong>VTBI:</strong> <span id="pr_lcd_vtbi"></span> ml</p>
-                    <p><strong>TIME:</strong> <span id="pr_lcd_time"></span> hh:mm</p>
+            <div style="margin-bottom: 10px; border: 2px solid #000; padding: 10px; background: #f9f9f9;">
+                <h3 style="margin: 0 0 8px 0; font-size: 12pt;">Preparación de mezcla</h3>
+                <p style="margin: 4px 0; font-size: 12pt;"><strong>Extraer <span id="pr_prep_prop"></span> ml de propofol.</strong></p>
+                <p id="pr_prep_ket_row" style="margin: 4px 0; font-size: 12pt; display:none;"><strong>Extraer <span id="pr_prep_ket"></span> ml de ketamina.</strong></p>
+                <p style="margin: 4px 0; font-size: 12pt;"><strong>Agregar <span id="pr_nacl_ml"></span> ml de NaCl 0,9%.</strong></p>
+                <p style="margin: 8px 0 4px 0; font-size: 12pt; text-decoration: underline;"><strong>Preparar volumen final total: <span id="pr_final_vol"></span> ml.</strong></p>
+                
+                <p style="margin: 10px 0 2px 0; font-size: 10pt;">Contenedor sugerido: capacidad mínima <span id="pr_container_type"></span></p>
+                <p style="margin: 2px 0; font-size: 10pt; font-weight: bold;">NO completar el envase entero. Preparar sólo el volumen final calculado.</p>
+            </div>
+
+            <div style="margin-bottom: 10px; border: 1px dashed #000; padding: 8px;">
+                <p style="margin: 0; font-weight: bold;">Antes de conectar al paciente:</p>
+                <ul style="margin: 5px 0 0 20px; padding: 0;">
+                    <li>Verificar línea correctamente cebada/purgada.</li>
+                    <li>Confirmar ausencia de aire.</li>
+                    <li>Confirmar homogeneidad de la mezcla.</li>
+                    <li>Revisar que FLOW, VTBI y TIME coincidan con la hoja.</li>
+                </ul>
+            </div>
+
+            <div style="margin-bottom: 10px;">
+                <h3 style="margin: 0 0 5px 0; font-size: 11pt;">Programación Infusomat</h3>
+                <div style="border: 2px solid #000; padding: 8px; width: 60%; font-family: monospace; font-size: 14pt; background: #eee;">
+                    <p style="margin: 2px 0;"><strong>FLOW:</strong> <span id="pr_lcd_flow"></span> ml/h</p>
+                    <p style="margin: 2px 0;"><strong>VTBI:</strong> <span id="pr_lcd_vtbi"></span> ml</p>
+                    <p style="margin: 2px 0;"><strong>TIME:</strong> <span id="pr_lcd_time"></span> hh:mm</p>
                 </div>
             </div>
 
-            <div style="margin-top: 15px;">
-                <h3>D. Ketamina</h3>
-                <p><strong>Decisión:</strong> <span id="pr_ket_opt"></span></p>
-                <div id="pr_ket_details">
-                    <p><strong>Bolo calculado:</strong> <span id="pr_ket_mg"></span> mg &nbsp;=&nbsp; <span id="pr_ket_ml"></span> ml</p>
-                    <p><strong>Motivo:</strong> <span id="pr_ket_reason"></span></p>
-                </div>
+            <div id="pr_warnings_container" style="margin-bottom: 10px; border: 1px solid #d97706; padding: 8px; display: none;">
+                <h3 style="margin: 0 0 5px 0; font-size: 10pt; color: #d97706;">Advertencias</h3>
+                <p id="pr_vg_warning" style="margin: 2px 0; display: none; font-weight: bold;">Volume Guard: <span id="pr_volume_guard_status"></span></p>
+                <ul id="pr_clinical_warnings_list" style="margin: 3px 0 0 20px; padding: 0; font-size: 9.5pt;"></ul>
             </div>
 
-            <div style="margin-top: 15px;">
-                <h3>E. Lidocaína</h3>
-                <p><strong>Máximo seguro:</strong> <span id="pr_lido_mg"></span> mg</p>
-                <p><strong>Equivalente comercial:</strong> <span id="pr_lido_ml"></span> ml</p>
-                <p><em>Sugerencia: <span id="pr_lido_dil"></span></em></p>
+            <div style="margin-top: 20px; border-top: 1px solid #000; padding-top: 10px; display: flex; justify-content: space-between;">
+                <p style="margin: 0;"><strong>Médico veterinario:</strong> ______________________</p>
+                <p style="margin: 0;"><strong>Fecha:</strong> ___________________</p>
+                <p style="margin: 0;"><strong>Firma:</strong> ______________________</p>
             </div>
-
-            <div style="margin-top: 15px;">
-                <h3>F. Suero de mantención</h3>
-                <div style="border: 2px solid #000; padding: 10px; width: 50%; font-family: monospace; font-size: 14pt;">
-                    <p><strong>FLOW:</strong> <span id="pr_fluid_flow"></span> ml/h</p>
-                    <p><strong>VTBI:</strong> <span id="pr_fluid_vtbi"></span> ml</p>
-                    <p><strong>TIME:</strong> <span id="pr_fluid_time"></span> hh:mm</p>
-                </div>
+            
+            <div style="display:none;" aria-hidden="true">
+                <span id="pr_ket_opt"></span>
+                <span id="pr_ket_mg"></span>
+                <span id="pr_ket_ml"></span>
+                <span id="pr_ket_reason"></span>
+                <span id="pr_lido_mg"></span>
+                <span id="pr_lido_ml"></span>
+                <span id="pr_lido_dil"></span>
+                <span id="pr_final_conc"></span>
+                <span id="pr_final_ket_conc"></span>
+                <span id="pr_maintenance_info_text"></span>
             </div>
         </div>
 
@@ -733,6 +869,6 @@
         <p class="text-xs text-slate">&copy; 2026 SafeAnesthesia Pre-Q</p>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ range(1, 1000000) | random }}"></script>
 </body>
 </html>

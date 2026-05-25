@@ -216,7 +216,32 @@ def api_calc_propofol():
         propofol_pct = data.get('propofol_concentration', '1%')
         asa = data.get('asa_class', 'I')
         
-        results = calculate_propofol(weight, target_dose, duration, species, propofol_pct, asa)
+        # Nuevos parámetros del diseño clínico
+        anesthesia_mode = data.get('anesthesia_mode', 'propofol_solo')
+        ketamine_concentration = float(data.get('ketamine_concentration', 50.0))
+        ketamine_target_dose = float(data.get('ketamine_target_dose', 0.1))
+        use_ratio_1_2 = data.get('use_ratio_1_2', False)
+        diluent_volume = float(data.get('diluent_volume', 40.0))
+        container_type = data.get('container_type')
+        propofol_dose_unit = data.get('propofol_dose_unit', 'mg/kg/min')
+        ketamine_dose_unit = data.get('ketamine_dose_unit', 'mg/kg/min')
+        
+        results = calculate_propofol(
+            weight=weight,
+            target_dose=target_dose,
+            duration_min=duration,
+            species=species,
+            propofol_pct=propofol_pct,
+            asa_class=asa,
+            anesthesia_mode=anesthesia_mode,
+            ketamine_concentration=ketamine_concentration,
+            ketamine_target_dose=ketamine_target_dose,
+            use_ratio_1_2=use_ratio_1_2,
+            diluent_volume=diluent_volume,
+            container_type=container_type,
+            propofol_dose_unit=propofol_dose_unit,
+            ketamine_dose_unit=ketamine_dose_unit
+        )
         write_audit(current_user.id, 'calculation_generated', {'patient': data.get('patient_name'), 'species': species})
         return jsonify(results)
     except Exception as e:

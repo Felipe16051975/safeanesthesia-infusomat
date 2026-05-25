@@ -10,16 +10,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const hospitalModeDiv = document.getElementById('hospital-mode');
     const titleSpan = document.getElementById('mode-title-span');
     const subtitleP = document.getElementById('mode-subtitle-p');
-    const printPreq = document.getElementById('print-summary');
+    const printPreq = document.getElementById('print-summary-preq');
     const printHospital = document.getElementById('print-summary-hospital');
 
     function setActivePrint(mode) {
         if (mode === 'preq') {
-            printPreq.classList.add('active-print');
-            printHospital.classList.remove('active-print');
+            if (printPreq) printPreq.classList.add('active-print');
+            if (printHospital) printHospital.classList.remove('active-print');
         } else {
-            printHospital.classList.add('active-print');
-            printPreq.classList.remove('active-print');
+            if (printHospital) printHospital.classList.add('active-print');
+            if (printPreq) printPreq.classList.remove('active-print');
         }
     }
 
@@ -49,20 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     
-    // Cebado logic
-    const primeVolumeSelect = document.getElementById('priming_volume');
-    const customPrimeInput = document.getElementById('custom_priming_vol');
-    primeVolumeSelect.addEventListener('change', () => {
-        if (primeVolumeSelect.value === 'custom') {
-            customPrimeInput.classList.remove('hidden');
-        } else {
-            customPrimeInput.classList.add('hidden');
-        }
-    });
-
-    const primeFluidSelect = document.getElementById('prime_fluid');
-    const warningSuero = document.getElementById('prime-warning-suero');
-    const warningMezcla = document.getElementById('prime-warning-mezcla');
+    // (prime_fluid, primeVolumeSelect, customPrimeInput are now hidden stubs - cebado eliminated from Pre-Q)
 
     // Ketamina logic
     const ketamineOpt = document.getElementById('ketamine_opt');
@@ -77,24 +64,199 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Event listeners for live updates of K, Lido and Fluids
-    ['weight', 'species', 'k_conc', 'k_dose', 'lido_conc', 'lido_max_dose', 'fluid_hours'].forEach(id => {
+    // Reactive variables and selector elements
+    const anesthesiaModeSelect = document.getElementById('anesthesia_mode');
+    const ketofolMixtureFields = document.getElementById('ketofol_mixture_fields');
+    const useRatioSelect = document.getElementById('use_ratio_1_2');
+    const targetDoseInput = document.getElementById('target_dose');
+    const propDoseUnitSelect = document.getElementById('propofol_dose_unit');
+    const ketamineTargetDoseInput = document.getElementById('ketamine_target_dose');
+    const ketamineDoseUnitSelect = document.getElementById('ketamine_dose_unit');
+    const diluentVolumeInput = document.getElementById('diluent_volume');
+    
+    let userHasSelectedContainerManually = false;
+
+    // Toggle mixture fields and sync manual/auto bolus options
+    anesthesiaModeSelect.addEventListener('change', () => {
+        const mode = anesthesiaModeSelect.value;
+        if (mode === 'propofol_ketamine_mixture') {
+            ketofolMixtureFields.classList.remove('hidden');
+        } else {
+            ketofolMixtureFields.classList.add('hidden');
+        }
+
+        // Sync with Paso 5 Ketamina bolo
+        const ketOpt = document.getElementById('ketamine_opt');
+        const ketFields = document.getElementById('ketamine_fields');
+        if (mode === 'propofol_ketamine_bolo') {
+            ketOpt.value = 'bolo';
+            ketFields.classList.remove('hidden');
+        } else {
+            ketOpt.value = 'no';
+            ketFields.classList.add('hidden');
+        }
+        
+        updateVolumeGuardLabels();
+        updateKetamineLidocaine();
+    });
+
+    // Auto-calculate 1:2 Ketofol ratio
+    function updateRatioAndUnits() {
+        const ratioInfoEl = document.getElementById('ratio-auto-info');
+        if (useRatioSelect.value === 'yes') {
+            const pDose = parseFloat(targetDoseInput.value) || 0;
+            ketamineDoseUnitSelect.value = propDoseUnitSelect.value;
+            ketamineTargetDoseInput.value = (pDose / 2.0).toFixed(3);
+            ketamineTargetDoseInput.disabled = true;
+            ketamineDoseUnitSelect.disabled = true;
+            if (ratioInfoEl) ratioInfoEl.style.display = 'block';
+        } else {
+            ketamineTargetDoseInput.disabled = false;
+            ketamineDoseUnitSelect.disabled = false;
+            if (ratioInfoEl) ratioInfoEl.style.display = 'none';
+        }
+    }
+
+    if (useRatioSelect) {
+        useRatioSelect.addEventListener('change', updateRatioAndUnits);
+    }
+    if (targetDoseInput) {
+        targetDoseInput.addEventListener('input', updateRatioAndUnits);
+    }
+    if (propDoseUnitSelect) {
+        propDoseUnitSelect.addEventListener('change', updateRatioAndUnits);
+    }
+
+    // Container manual selection tracker
+    document.querySelectorAll('input[name="container_type"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            userHasSelectedContainerManually = true;
+        });
+    });
+
+    const ketamineConcSel = document.getElementById('ketamine_concentration');
+    const ketamineConcCustom = document.getElementById('ketamine_concentration_custom');
+    if (ketamineConcSel) {
+        ketamineConcSel.addEventListener('change', () => {
+            if (ketamineConcSel.value === 'custom') {
+                ketamineConcCustom.classList.remove('hidden');
+            } else {
+                ketamineConcCustom.classList.add('hidden');
+            }
+            updateVolumeGuardLabels();
+            updateKetamineLidocaine();
+            updateFluids();
+        });
+    }
+    if (ketamineConcCustom) {
+        ketamineConcCustom.addEventListener('input', () => {
+            updateVolumeGuardLabels();
+            updateKetamineLidocaine();
+            updateFluids();
+        });
+    }
+
+    function getKetamineConcentration() {
+        if (!ketamineConcSel) return 50.0;
+        if (ketamineConcSel.value === 'custom') {
+            return parseFloat(ketamineConcCustom.value) || 50.0;
+        }
+        return parseFloat(ketamineConcSel.value) || 50.0;
+    }
+
+    // Dynamic Volume Guard labels near NaCl
+    function updateVolumeGuardLabels() {
+        const w = parseFloat(document.getElementById('weight').value);
+        const species = document.getElementById('species').value;
+        const duration = parseFloat(document.getElementById('duration_estimated').value);
+
+        if (isNaN(w) || w <= 0 || isNaN(duration) || duration <= 0) {
+            document.getElementById('nacl-suggested').innerText = '--';
+            document.getElementById('nacl-max-rec').innerText = '--';
+            return;
+        }
+
+        // 60 ml/kg/day for dogs, 50 for cats
+        const mlKgDay = species === 'dog' ? 60.0 : 50.0;
+        const maintH = (mlKgDay * w) / 24.0;
+        const maintPeriod = maintH * (duration / 60.0);
+
+        document.getElementById('nacl-suggested').innerText = '40.0 ml';
+        document.getElementById('nacl-max-rec').innerText = `${maintPeriod.toFixed(1)} ml`;
+
+        // Estimate volume to suggest container in real-time
+        // Propofol standard dose 0.2 mg/kg/min -> 12 mg/kg/h. At 1% = 1.2 ml/kg/h.
+        const concSelect = document.getElementById('propofol_concentration').value;
+        const concVal = concSelect === '2%' ? 20.0 : 10.0;
+        const pDoseConverted = convertToMgKgMinLocal(parseFloat(targetDoseInput.value) || 0, propDoseUnitSelect.value);
+        const pMg = w * pDoseConverted * duration;
+        const pMl = pMg / concVal;
+        
+        let kMl = 0;
+        if (anesthesiaModeSelect.value === 'propofol_ketamine_mixture') {
+            const kConc = getKetamineConcentration();
+            let kDose = parseFloat(ketamineTargetDoseInput.value) || 0;
+            if (useRatioSelect.value === 'yes') {
+                kDose = pDoseConverted / 2.0;
+            } else {
+                kDose = convertToMgKgMinLocal(kDose, ketamineDoseUnitSelect.value);
+            }
+            const kMg = w * kDose * duration;
+            kMl = kConc > 0 ? kMg / kConc : 0;
+        }
+
+        const diluent = parseFloat(diluentVolumeInput.value) || 0;
+        const estFinalVol = pMl + kMl + diluent;
+
+        autoSuggestContainer(estFinalVol);
+    }
+
+    function convertToMgKgMinLocal(val, unit) {
+        if (unit === 'mg/kg/h') return val / 60.0;
+        if (unit === 'mcg/kg/min') return val / 1000.0;
+        return val;
+    }
+
+    function autoSuggestContainer(volume) {
+        if (userHasSelectedContainerManually) return;
+
+        let value = 'jeringa_50_ml';
+        let label = 'cap. mínima 50 ml';
+        if (volume <= 20.0) {
+            value = 'jeringa_20_ml';
+            label = 'cap. mínima 20 ml';
+        } else if (volume <= 50.0) {
+            value = 'jeringa_50_ml';
+            label = 'cap. mínima 50 ml';
+        } else {
+            value = 'bolsa_100_ml';
+            label = 'cap. mínima 100 ml';
+        }
+
+        const radio = document.querySelector(`input[name="container_type"][value="${value}"]`);
+        if (radio) {
+            radio.checked = true;
+        }
+        document.getElementById('suggested-container-lbl').innerText = label;
+    }
+
+    // Listeners for live updates of labels and parameters
+    ['weight', 'species', 'duration_estimated', 'target_dose', 'propofol_dose_unit', 'ketamine_concentration', 'ketamine_target_dose', 'ketamine_dose_unit', 'diluent_volume', 'k_conc', 'k_dose', 'lido_conc', 'lido_max_dose', 'fluid_hours'].forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.addEventListener('input', () => {
+                updateVolumeGuardLabels();
                 updateKetamineLidocaine();
                 updateFluids();
             });
             el.addEventListener('change', () => {
+                updateVolumeGuardLabels();
                 updateKetamineLidocaine();
                 updateFluids();
             });
         }
     });
 
-    function getDeadVolume() {
-        if (primeVolumeSelect.value === 'custom') return parseFloat(customPrimeInput.value) || 0;
-        return parseFloat(primeVolumeSelect.value);
-    }
 
     btnCalc.addEventListener('click', async () => {
         btnCalc.disabled = true;
@@ -106,15 +268,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const dose = parseFloat(document.getElementById('target_dose').value);
             const concSelect = document.getElementById('propofol_concentration').value; // 1% or 2%
             const diluent = parseFloat(document.getElementById('diluent_volume').value);
-            const primed = document.getElementById('line_primed').value; // yes / no
-            const primeFluid = document.getElementById('prime_fluid').value; // suero / mezcla
-            const deadVol = getDeadVolume();
 
             if (isNaN(w) || isNaN(duration) || isNaN(dose) || isNaN(diluent)) {
                 throw new Error("Complete todos los campos requeridos.");
             }
 
-            // Llamada al backend
+            // Llamada al backend con todos los parámetros clínicos del diseño Pre-Q
             const propPayload = {
                 patient_name: document.getElementById('patient_name').value || 'Paciente',
                 weight: w,
@@ -122,7 +281,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 duration_estimated: duration,
                 species: document.getElementById('species').value,
                 propofol_concentration: concSelect,
-                asa_class: document.getElementById('asa_class').value || 'I'
+                asa_class: document.getElementById('asa_class').value || 'I',
+                anesthesia_mode: anesthesiaModeSelect.value,
+                ketamine_concentration: getKetamineConcentration(),
+                ketamine_target_dose: parseFloat(document.getElementById('ketamine_target_dose').value) || 0.1,
+                use_ratio_1_2: useRatioSelect.value === 'yes',
+                diluent_volume: diluent,
+                container_type: document.querySelector('input[name="container_type"]:checked')?.value || 'jeringa_50_ml',
+                propofol_dose_unit: propDoseUnitSelect.value,
+                ketamine_dose_unit: ketamineDoseUnitSelect.value
             };
 
             const propRes = await fetch('/api/calculate/propofol', {
@@ -133,16 +300,74 @@ document.addEventListener('DOMContentLoaded', () => {
             const propData = await propRes.json();
             if (propData.error) throw new Error(propData.error);
 
+            // EVALUAR ESTADO VOLUME GUARD
+            const vgAlert = document.getElementById('volume-guard-alert');
+            const vgAlertTxt = document.getElementById('volume-guard-alert-text');
+            const secInfo = document.getElementById('secondary-validation-info');
+            const secInfoTxt = document.getElementById('secondary-validation-info-text');
+
+            // Mostrar validación informativa secundaria en todos los casos
+            secInfo.classList.remove('hidden');
+            secInfoTxt.innerText = propData.maintenance_info_text;
+
+            if (propData.volume_guard_status === 'BLOCKED') {
+                // Estado Bloqueado: mostrar alerta roja brillante
+                vgAlert.className = 'col-span-2 p-3 rounded';
+                vgAlert.style.backgroundColor = '#ef4444';
+                vgAlert.style.color = '#ffffff';
+                vgAlert.classList.remove('hidden');
+                vgAlertTxt.innerText = propData.volume_guard_message;
+
+                // Bloquear Infusomat
+                document.getElementById('lcd-pump-status').innerText = 'BLOCKED';
+                document.getElementById('lcd-pump-status').className = 'color-danger';
+                document.getElementById('lcd-flow-val').innerText = '--';
+                document.getElementById('lcd-vtbi-val').innerText = '--';
+                document.getElementById('lcd-time-val').innerHTML = '--:-- <small>hh:mm</small>';
+
+                // Ocultar resultados de preparación
+                document.getElementById('propofol-results').style.display = 'none';
+                
+                throw new Error(propData.volume_guard_message);
+            } else if (propData.volume_guard_status === 'WARNING') {
+                // Estado Precaución: mostrar alerta amarilla
+                vgAlert.className = 'col-span-2 p-3 rounded';
+                vgAlert.style.backgroundColor = '#eab308';
+                vgAlert.style.color = '#0f172a';
+                vgAlert.classList.remove('hidden');
+                vgAlertTxt.innerText = propData.volume_guard_message;
+            } else {
+                // Estado Seguro
+                vgAlert.classList.add('hidden');
+            }
+
+            // Advertencias clínicas dinámicas
+            const warningsContainer = document.getElementById('clinical-warnings-container');
+            const warningsList = document.getElementById('clinical-warnings-list');
+            if (propData.ketofol_warnings && propData.ketofol_warnings.length > 0) {
+                warningsList.innerHTML = '';
+                propData.ketofol_warnings.forEach(warn => {
+                    const li = document.createElement('li');
+                    li.innerText = warn;
+                    warningsList.appendChild(li);
+                });
+                warningsContainer.classList.remove('hidden');
+            } else {
+                warningsContainer.classList.add('hidden');
+            }
+
             const propMl = propData.required_ml;
 
+            // Pump payload: VTBI = volumen final, FLOW = volumen final / horas, TIME = duración
+            // No dead volume, no priming adjustments
             const pumpPayload = {
                 propofol_ml: propMl,
                 total_mg: propData.total_mg,
                 diluent_volume: diluent,
                 duration_estimated: duration,
-                line_primed: primed,
-                prime_fluid: primeFluid,
-                dead_volume_ml: deadVol
+                line_primed: 'yes',
+                prime_fluid: 'suero',
+                dead_volume_ml: 0
             };
 
             const pumpRes = await fetch('/api/calculate/pump', {
@@ -154,30 +379,50 @@ document.addEventListener('DOMContentLoaded', () => {
             if (pumpData.error) throw new Error(pumpData.error);
 
             // Update UI Paso 2
-            document.getElementById('prop-prep-text').innerText = `Extraer ${propMl.toFixed(2)} ml de propofol ${concSelect} y agregar a ${diluent} ml de NaCl 0,9%.`;
-            document.getElementById('prop-mg').innerText = propData.total_mg.toFixed(2);
-            document.getElementById('prop-ml').innerText = propMl.toFixed(2);
-            document.getElementById('prop-final-vol').innerText = (propMl + diluent).toFixed(2);
-            document.getElementById('prop-final-conc').innerText = pumpData.final_concentration_mg_ml.toFixed(2);
-            document.getElementById('propofol-results').style.display = 'block';
-
-            // Update Paso 3 warnings
-            warningSuero.classList.add('hidden');
-            warningMezcla.classList.add('hidden');
-            if (primeFluid === 'suero') {
-                document.getElementById('prime-delay').innerText = pumpData.delay_time_min.toFixed(1);
-                warningSuero.classList.remove('hidden');
-            } else if (primeFluid === 'mezcla') {
-                warningMezcla.classList.remove('hidden');
+            const cName = propData.selected_container === 'jeringa_20_ml' ? 'cap. mínima 20 ml' : 
+                          (propData.selected_container === 'jeringa_50_ml' ? 'cap. mínima 50 ml' : 'cap. mínima 100 ml');
+                          
+            if (propData.anesthesia_mode === 'propofol_ketamine_mixture') {
+                document.getElementById('prop-prep-text').innerText = `Extraer ${propMl.toFixed(2)} ml de propofol ${concSelect} + ${propData.ketamine_required_ml.toFixed(2)} ml de ketamina y agregar a ${diluent} ml de NaCl 0,9%.`;
+                document.getElementById('li-ket-result').style.display = 'block';
+                document.getElementById('li-ket-dose-result').style.display = 'block';
+                document.getElementById('li-ket-conc-result').style.display = 'block';
+                document.getElementById('ket-mg').innerText = propData.ketamine_total_mg.toFixed(2);
+                document.getElementById('ket-ml').innerText = propData.ketamine_required_ml.toFixed(2);
+                document.getElementById('ket-target-dose').innerText = propData.target_ketamine_mg_kg_min.toFixed(4);
+                document.getElementById('ket-delivered-dose').innerText = propData.delivered_ketamine_mg_kg_min.toFixed(4);
+                document.getElementById('ket-final-conc').innerText = propData.final_ketamine_concentration.toFixed(4);
+            } else {
+                document.getElementById('prop-prep-text').innerText = `Extraer ${propMl.toFixed(2)} ml de propofol ${concSelect} y agregar a ${diluent} ml de NaCl 0,9%.`;
+                document.getElementById('li-ket-result').style.display = 'none';
+                document.getElementById('li-ket-dose-result').style.display = 'none';
+                document.getElementById('li-ket-conc-result').style.display = 'none';
             }
 
+            document.getElementById('prop-mg').innerText = propData.total_mg.toFixed(2);
+            document.getElementById('prop-ml').innerText = propMl.toFixed(2);
+            document.getElementById('prop-target-dose').innerText = propData.target_propofol_mg_kg_min.toFixed(4);
+            document.getElementById('prop-delivered-dose').innerText = propData.delivered_propofol_mg_kg_min.toFixed(4);
+            document.getElementById('result-nacl-ml').innerText = diluent.toFixed(2);
+            document.getElementById('prop-final-vol').innerText = propData.final_volume.toFixed(2);
+            document.getElementById('prop-final-conc').innerText = propData.final_propofol_concentration.toFixed(4);
+            document.getElementById('result-container-used').innerText = cName;
+            
+            const vgStatusLbl = document.getElementById('result-volume-guard-lbl');
+            vgStatusLbl.innerText = propData.volume_guard_status;
+            vgStatusLbl.className = 'font-bold ' + (propData.volume_guard_status === 'SAFE' ? 'text-teal' : 'color-yellow');
+
+            document.getElementById('propofol-results').style.display = 'block';
+
+            // (Cebado eliminado del flujo Pre-Q - no hay advertencias de cebado)
+
             // Override FLOW and VTBI on frontend
-            const volFinal = propMl + diluent;
+            const volFinal = propData.final_volume;
             const horas = duration / 60;
             const flow = volFinal / horas;
             const vtbi = volFinal;
 
-            // Update Paso 4
+            // Update Paso 4 simulator B. Braun
             document.getElementById('lcd-pump-status').innerText = 'RUNNING';
             document.getElementById('lcd-pump-status').className = 'color-teal';
             document.getElementById('lcd-flow-val').innerText = flow.toFixed(1);
@@ -191,7 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
             updateFluids();
 
         } catch (e) {
-            alert(e.message);
+            // No alert for blocks since we display the nice UI message
+            if (!e.message.includes("superior") && !e.message.includes("no están permitidas")) {
+                alert(e.message);
+            }
         } finally {
             btnCalc.disabled = false;
             btnCalc.innerText = "Calcular y Actualizar Bomba";
@@ -232,8 +480,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isNaN(w) || isNaN(hrs)) return;
 
-        // perro: 60 ml/kg/dia -> 2.5 ml/kg/h
-        // gato: 40 ml/kg/dia -> 1.66 ml/kg/h
         const mlKgDia = species === 'dog' ? 60 : 40;
         const rate = (w * mlKgDia) / 24;
         const vtbi = rate * hrs;
@@ -253,49 +499,84 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('pr_surgery').innerText = document.getElementById('surgery_type').value || '--';
         document.getElementById('pr_duration').innerText = document.getElementById('duration_estimated').value || '--';
 
+        const modeLabel = anesthesiaModeSelect.options[anesthesiaModeSelect.selectedIndex]?.text || '--';
+        document.getElementById('pr_anesthesia_mode').innerText = modeLabel;
+        document.getElementById('pr_container_type').innerText = document.getElementById('result-container-used').innerText || '--';
+
+        const propConcSel = document.getElementById('propofol_concentration');
+        document.getElementById('pr_prop_conc').innerText = propConcSel.options[propConcSel.selectedIndex]?.text || '--';
+        document.getElementById('pr_prop_dose').innerText = document.getElementById('target_dose').value + ' ' + document.getElementById('propofol_dose_unit').value;
         document.getElementById('pr_prop_mg').innerText = document.getElementById('prop-mg').innerText || '--';
         document.getElementById('pr_prop_ml').innerText = document.getElementById('prop-ml').innerText || '--';
+        document.getElementById('pr_prep_prop').innerText = document.getElementById('prop-ml').innerText || '--';
+        
         document.getElementById('pr_nacl_ml').innerText = document.getElementById('diluent_volume').value || '--';
         document.getElementById('pr_final_vol').innerText = document.getElementById('prop-final-vol').innerText || '--';
-        document.getElementById('pr_final_conc').innerText = document.getElementById('prop-final-conc').innerText || '--';
+
+        // Ketamina Mezcla si corresponde
+        const prKetMixRow = document.getElementById('pr_ket_mix_row');
+        const prPrepKetRow = document.getElementById('pr_prep_ket_row');
+        if (anesthesiaModeSelect.value === 'propofol_ketamine_mixture') {
+            prKetMixRow.style.display = 'block';
+            prPrepKetRow.style.display = 'block';
+            const ketConcSel = document.getElementById('ketamine_concentration');
+            let ketConcText = ketConcSel.options[ketConcSel.selectedIndex]?.text || '--';
+            if (ketConcSel.value === 'custom') {
+                ketConcText = document.getElementById('ketamine_concentration_custom').value + ' mg/ml';
+            }
+            document.getElementById('pr_ket_conc').innerText = ketConcText;
+            document.getElementById('pr_ket_dose').innerText = document.getElementById('ketamine_target_dose').value + ' ' + document.getElementById('ketamine_dose_unit').value;
+            document.getElementById('pr_ket_mix_mg').innerText = document.getElementById('ket-mg').innerText || '--';
+            document.getElementById('pr_ket_mix_ml').innerText = document.getElementById('ket-ml').innerText || '--';
+            document.getElementById('pr_prep_ket').innerText = document.getElementById('ket-ml').innerText || '--';
+        } else {
+            prKetMixRow.style.display = 'none';
+            prPrepKetRow.style.display = 'none';
+        }
+
+        // Warnings
+        const warningsContainer = document.getElementById('pr_warnings_container');
+        const prVgWarning = document.getElementById('pr_vg_warning');
+        const vgStatus = document.getElementById('result-volume-guard-lbl').innerText;
+        document.getElementById('pr_volume_guard_status').innerText = vgStatus;
+        
+        let hasWarnings = false;
+        if (vgStatus.includes("WARNING") || vgStatus.includes("BLOCKED")) {
+            prVgWarning.style.display = 'block';
+            hasWarnings = true;
+        } else {
+            prVgWarning.style.display = 'none';
+        }
+
+        const prWarnList = document.getElementById('pr_clinical_warnings_list');
+        const activeWarnings = document.querySelectorAll('#clinical-warnings-list li');
+        prWarnList.innerHTML = '';
+        if (activeWarnings.length > 0) {
+            activeWarnings.forEach(li => {
+                const newLi = document.createElement('li');
+                newLi.innerText = li.innerText;
+                prWarnList.appendChild(newLi);
+            });
+            hasWarnings = true;
+            prWarnList.style.display = 'block';
+        } else {
+            prWarnList.style.display = 'none';
+        }
+        
+        if (hasWarnings) {
+            warningsContainer.style.display = 'block';
+        } else {
+            warningsContainer.style.display = 'none';
+        }
 
         document.getElementById('pr_lcd_flow').innerText = document.getElementById('lcd-flow-val').innerText || '--';
         document.getElementById('pr_lcd_vtbi').innerText = document.getElementById('lcd-vtbi-val').innerText || '--';
         document.getElementById('pr_lcd_time').innerText = document.getElementById('lcd-time-val').innerText || '--';
-
-        const ketOpt = document.getElementById('ketamine_opt').value;
-        if (ketOpt === 'no') {
-            document.getElementById('pr_ket_opt').innerText = 'No usar ketamina';
-            document.getElementById('pr_ket_details').style.display = 'none';
-        } else {
-            document.getElementById('pr_ket_opt').innerText = 'Calcular bolo separado';
-            document.getElementById('pr_ket_details').style.display = 'block';
-            const kResult = document.getElementById('k-result').innerText;
-            const regex = /([\d.]+) mg = ([\d.]+) ml/;
-            const match = kResult.match(regex);
-            if (match) {
-                document.getElementById('pr_ket_mg').innerText = match[1];
-                document.getElementById('pr_ket_ml').innerText = match[2];
-            } else {
-                document.getElementById('pr_ket_mg').innerText = '--';
-                document.getElementById('pr_ket_ml').innerText = '--';
-            }
-            document.getElementById('pr_ket_reason').innerText = document.getElementById('k_reason').value || '--';
-        }
-
-        const lidoResult = document.getElementById('lido-result').innerText;
-        const lRegexMg = /([\d.]+) mg totales/;
-        const lRegexMl = /([\d.]+) ml de lidocaína/;
-        const m1 = lidoResult.match(lRegexMg);
-        const m2 = lidoResult.match(lRegexMl);
-        document.getElementById('pr_lido_mg').innerText = m1 ? m1[1] : '--';
-        document.getElementById('pr_lido_ml').innerText = m2 ? m2[1] : '--';
-        document.getElementById('pr_lido_dil').innerText = document.getElementById('lido-dilution').innerText || '--';
-
-        document.getElementById('pr_fluid_flow').innerText = document.getElementById('fluid-flow').innerText || '--';
-        document.getElementById('pr_fluid_vtbi').innerText = document.getElementById('fluid-vtbi').innerText || '--';
-        document.getElementById('pr_fluid_time').innerText = document.getElementById('fluid-time').innerText || '--';
     }
+
+    // Call dynamic labels update initially
+    updateVolumeGuardLabels();
+    updateRatioAndUnits();
 
     document.getElementById('btn-print').addEventListener('click', () => {
         if (currentMode === 'preq') {
