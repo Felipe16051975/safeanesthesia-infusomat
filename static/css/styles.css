@@ -802,3 +802,127 @@ body {
     50% { opacity: 0.3; }
     100% { opacity: 1; }
 }
+
+/* ==========================================================================
+   IMPRESIÓN (PRINT)
+   ========================================================================== */
+@media print {
+    @page {
+        size: letter portrait;
+        margin: 1cm;
+    }
+    
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        min-height: auto !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    
+    * {
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        border-color: #999 !important;
+    }
+    
+    .app-header {
+        position: static;
+        background: #fff !important;
+        border-bottom: 2px solid #000;
+        padding: 0;
+        margin-bottom: 20px;
+    }
+    
+    .app-main-layout {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        grid-template-columns: 1fr !important;
+    }
+
+    .card {
+        border: 1px solid #ccc !important;
+        margin-bottom: 15px !important;
+        page-break-inside: avoid;
+        background: #fff !important;
+    }
+    
+    .card-header {
+        background: #eee !important;
+        border-bottom: 1px solid #ccc !important;
+        padding: 10px !important;
+        color: #000 !important;
+    }
+
+    .card-header h3 {
+        color: #000 !important;
+    }
+
+    .card-body {
+        padding: 10px !important;
+    }
+    
+    .btn, button, .user-meta-controls, .mode-selector-grid, .quick-volumes-grid {
+        display: none !important;
+    }
+    
+    input[type="number"], input[type="text"] {
+        border: none !important;
+        border-bottom: 1px solid #000 !important;
+        background: #fff !important;
+        color: #000 !important;
+        padding: 0 !important;
+    }
+    
+    .bbraun-lcd {
+        background: #fff !important;
+        color: #000 !important;
+        border: 2px solid #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+    }
+    
+    .lcd-metric .lbl, .lcd-metric .val, .lcd-header, .lcd-footer {
+        color: #000 !important;
+    }
+
+    .lcd-metric .val {
+        font-weight: bold;
+    }
+
+    .mixture-chart-box {
+        page-break-inside: avoid;
+    }
+    
+    .bar-segment {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+    }
+    
+    .clinical-results-table th {
+        background: #ddd !important;
+        color: #000 !important;
+        border: 1px solid #000 !important;
+    }
+    
+    .clinical-results-table td {
+        border: 1px solid #ccc !important;
+        color: #000 !important;
+    }
+    
+    .modal-overlay, .audit-log-terminal {
+        display: none !important;
+    }
+    
+    .stat-card {
+        border: 1px solid #ccc !important;
+        page-break-inside: avoid;
+    }
+
+    .stat-val {
+        color: #000 !important;
+    }
+}
